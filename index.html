@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CEM · Idoneïtat</title>
+<meta name="description" content="Quina zona d'escalada de Catalunya és bona els propers dies: pluja, secat de la roca, confort i sol a la paret.">
+<meta name="theme-color" content="#eef0ea" id="themeColor">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/logo.svg?v=1" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CEM">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex, nofollow">
+<script>
+  // Preferències d'aspecte abans de pintar (evita el parpelleig)
+  try{
+    const t = localStorage.getItem("cem_theme"); if(t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    if(localStorage.getItem("cem_size") === "big") document.documentElement.dataset.size = "big";
+    if(localStorage.getItem("cem_cb") === "1") document.documentElement.dataset.cb = "1";
+  }catch(e){}
+</script>
+<link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
+<link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+
+<!-- ============ MAPA (pantalla d'inici) ============ -->
+<div id="map" aria-label="Mapa de zones d'escalada"></div>
+
+<header class="top">
+  <img src="icons/logo.svg?v=1" alt="" width="38" height="38">
+  <div class="t"><b>CEM</b><span id="sub">Idoneïtat</span></div>
+  <div class="seg" role="group" aria-label="Modalitat" id="modSeg">
+    <button type="button" data-mod="esportiva">Esportiva</button><button type="button" data-mod="classica">Clàssica</button>
+  </div>
+  <button class="ib" id="menuBtn" type="button" aria-label="Menú" aria-haspopup="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="19" r="2.2" fill="currentColor"/></svg>
+  </button>
+</header>
+
+<!-- eines del mapa -->
+<div class="tools" role="toolbar" aria-label="Eines del mapa">
+  <button class="ib" id="layerBtn" type="button" aria-label="Capes" aria-expanded="false" aria-controls="layerPanel">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+  </button>
+  <button class="ib" id="terrainBtn" type="button" aria-label="Relleu 3D" aria-pressed="false"><b class="t3d">3D</b></button>
+  <button class="ib" id="locBtn" type="button" aria-label="On soc">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+</div>
+<div class="card layer-panel" id="layerPanel" hidden>
+  <div class="lp-row"><span class="lbl">Mapa</span>
+    <div class="seg" role="group" aria-label="Mapa base" id="baseSeg">
+      <button type="button" data-base="topo">Topogràfic</button><button type="button" data-base="orto">Ortofoto</button></div></div>
+  <div class="lp-checks">
+    <label class="chk"><input type="checkbox" id="lySlope"> Pendents</label>
+    <label class="chk"><input type="checkbox" id="lyRadar"> Radar de pluja</label>
+    <label class="chk"><input type="checkbox" id="lyWind" checked> Vent a les zones</label>
+    <label class="chk"><input type="checkbox" id="lyWalls" checked> Parets</label>
+  </div>
+  <p class="note" id="radarNote" hidden></p>
+  <div class="legend" aria-label="Llegenda"><span><i class="lv-ok"></i>Recomanat</span><span><i class="lv-mid"></i>Amb limitacions</span><span><i class="lv-no"></i>No recomanat</span><span><i class="lv-na"></i>Sense dades</span></div>
+</div>
+
+<!-- dia i franja -->
+<div class="daybar card" id="daybar">
+  <div class="days" id="days" role="group" aria-label="Dia"></div>
+  <div class="seg slot-seg" role="group" aria-label="Franja" id="slotSeg">
+    <button type="button" data-slot="am">Matí</button><button type="button" data-slot="pm">Tarda</button></div>
+</div>
+<div class="msg" id="msg" role="status">Carregant la previsió…</div>
+
+<!-- traçat de paret -->
+<div class="card draw-bar" id="drawBar" hidden>
+  <p id="drawTxt">Toca el mapa al llarg del cingle, d'una punta a l'altra.</p>
+  <div class="row">
+    <button class="btn" type="button" id="drawUndo">Desfés</button>
+    <button class="btn" type="button" id="drawCancel">Cancel·la</button>
+    <button class="btn pri" type="button" id="drawDone" disabled>Fet</button>
+  </div>
+</div>
+
+<!-- ============ FITXA DE LA ZONA (full inferior) ============ -->
+<section class="sheet" id="sheet" hidden aria-labelledby="zName">
+  <div class="grab" id="grab" aria-hidden="true"></div>
+  <div class="sh-h">
+    <div><h2 id="zName"></h2><span class="muted" id="zMeta"></span></div>
+    <button class="ib" type="button" id="sheetClose" aria-label="Tanca">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="sh-body" id="zBody"></div>
+</section>
+
+<!-- ============ MENÚ ⋮ (estil WhatsApp) ============ -->
+<div class="panel" id="menu" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-close aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Menú</h2><span></span></div>
+  <nav class="plist">
+    <button type="button" data-page="pAspecte"><b>Aspecte</b><small id="peekAsp"></small></button>
+    <button type="button" data-page="pLlindars"><b>Llindars</b><small id="peekLl"></small></button>
+    <button type="button" data-page="pParets"><b>Parets</b><small id="peekPar"></small></button>
+    <button type="button" data-page="pFonts"><b>Fonts i avís</b><small>D'on surten les dades</small></button>
+  </nav>
+  <button class="btn pri" id="install" type="button" hidden>Instal·la l'app</button>
+  <p class="ver muted">V1 · versió 1</p>
+</div>
+
+<div class="panel" id="pAspecte" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Aspecte</h2><span></span></div>
+  <div class="pbody">
+    <div class="prow"><span class="lbl">Tema</span>
+      <div class="seg" role="group" aria-label="Tema" id="themeSeg">
+        <button type="button" data-theme="auto">Automàtic</button><button type="button" data-theme="dark">Fosc</button><button type="button" data-theme="light">Clar</button></div></div>
+    <div class="prow"><span class="lbl">Mida del text</span>
+      <div class="seg" role="group" aria-label="Mida del text" id="sizeSeg">
+        <button type="button" data-size="normal">Petita</button><button type="button" data-size="big">Gran</button></div></div>
+    <div class="prow"><span class="lbl">Daltonisme</span>
+      <div class="seg" role="group" aria-label="Colors per a daltonisme" id="cbSeg">
+        <button type="button" data-cb="0">Normal</button><button type="button" data-cb="1">Alt contrast</button></div></div>
+    <p class="note">«Alt contrast» canvia el verd i el vermell per blau i taronja. Els veredictes porten sempre una icona i la nota, no només el color.</p>
+  </div>
+</div>
+
+<div class="panel" id="pLlindars" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Llindars</h2><span></span></div>
+  <div class="pbody">
+    <div class="prow"><span class="lbl">Confort per a</span>
+      <div class="seg" role="group" aria-label="Confort per a" id="roleSeg2">
+        <button type="button" data-role="climb">Escalant</button><button type="button" data-role="belay">Assegurant</button></div></div>
+    <div class="prow"><span class="lbl">Roba</span>
+      <div class="seg" role="group" aria-label="Roba" id="cloSeg">
+        <button type="button" data-clo="0.5">Lleugera</button><button type="button" data-clo="1">Normal</button><button type="button" data-clo="1.6">D'abric</button></div></div>
+    <p class="note">«Escalant»: et mous i escalfes. «Assegurant»: estàs quiet i és qui passa més fred. La roba corregeix la sensació: lleugera ≈ samarreta, normal ≈ jaqueta prima, d'abric ≈ plomes.</p>
+    <div class="crit" id="crit"></div>
+    <button class="btn" type="button" id="resetCrit">Restaura valors</button>
+  </div>
+</div>
+
+<div class="panel" id="pParets" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Parets</h2><span></span></div>
+  <div class="pbody">
+    <p class="note">Les parets que traces es desen en aquest mòbil. Fes-ne una còpia per passar-les a un altre mòbil o a l'administrador del catàleg.</p>
+    <div class="row">
+      <button class="btn" type="button" id="wExport">Exporta (JSON)</button>
+      <label class="btn">Importa<input type="file" id="wImport" accept="application/json,.json" hidden></label>
+    </div>
+    <div id="wList"></div>
+    <div id="wDelAll"></div>
+  </div>
+</div>
+
+<div class="panel" id="pFonts" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Fonts i avís</h2><span></span></div>
+  <div class="pbody prose">
+    <p><b>Avís:</b> és una ajuda per triar on anar, no un sistema de seguretat. A la muntanya decideix tu, i en cas d'emergència truca al 112.</p>
+    <p><b>Mapes i relleu:</b> © Institut Cartogràfic i Geològic de Catalunya (ICGC), llicència CC BY. Model del terreny de 5 m.</p>
+    <p><b>Previsió i pluja passada:</b> Open-Meteo (open-meteo.com), CC BY 4.0. Gratuït només per a ús no comercial.</p>
+    <p><b>Radar:</b> RainViewer.</p>
+    <p><b>Zones:</b> catàleg de prova; la base definitiva serà OpenStreetMap (© col·laboradors d'OpenStreetMap, ODbL).</p>
+    <p><b>Com es calcula:</b> la pluja de les últimes 72 h i el secat de la roca (segons el tipus de roca, el sol a la paret, el vent i la humitat); la tempesta; el confort (sensació tèrmica amb el sol a la paret, el vent, la humitat, la roba i si escales o assegures); l'adherència (roca massa calenta, freda o humida) i el vent màxim de la modalitat.</p>
+    <p><b>Sempre vermell:</b> roca molla, pluja o tempesta prevista a la franja.</p>
+  </div>
+</div>
+
+<script src="vendor/maplibre-gl.js?v=5.24.0"></script>
+<script src="zones.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
