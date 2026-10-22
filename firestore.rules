@@ -1,0 +1,64 @@
+rules_version = '2';
+// CEM · regles de Firestore
+// - usuaris/{uid}: perfil (nom, correu, rol). El rol i el premium només els canvia l'administració.
+// - admins/{uid}: administració addicional (la inicial és el correu de l'Oriol, confirmat).
+// - propostes/{id}: parets proposades. Les crea qui té el correu confirmat i accepta la llicència ODbL.
+//   Les revisa (aprova o rebutja) l'administració, un revisor o un premium.
+// - parets/{id}: catàleg aprovat. Lectura pública (l'app la llegeix sense compte).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed(){ return request.auth != null; }
+    function verified(){ return signed() && request.auth.token.email_verified == true; }
+    function owner(){ return verified() && request.auth.token.email == "oriolbarber@gmail.com"; }
+    function isAdmin(){ return owner() || (signed() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))); }
+    function prof(){ return get(/databases/$(database)/documents/usuaris/$(request.auth.uid)).data; }
+    function hasProf(){ return signed() && exists(/databases/$(database)/documents/usuaris/$(request.auth.uid)); }
+    function reviewer(){ return isAdmin() || (hasProf() && (prof().rol == "revisor" || prof().get("premium", false) == true)); }
+    function str(v, n){ return v is string && v.size() > 0 && v.size() <= n; }
+
+    match /usuaris/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || reviewer());
+      allow create: if signed() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(["nom", "email", "rol", "consentVersio", "consentAt", "creat"])
+        && request.resource.data.rol == "registrat" && str(request.resource.data.nom, 80)
+        && request.resource.data.email == request.auth.token.email;
+      // la persona es canvia el nom i marca que ha acceptat la llicència; l'administració, el rol i el premium
+      allow update: if signed() && (
+        (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nom", "odblAt"])
+          && str(request.resource.data.nom, 80))
+        || (isAdmin() && request.auth.uid != uid));
+      allow delete: if signed() && (request.auth.uid == uid || isAdmin());
+    }
+
+    match /admins/{uid} {
+      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+      allow write: if owner();
+    }
+
+    match /propostes/{id} {
+      allow read: if signed() && (resource.data.userId == request.auth.uid || reviewer());
+      allow create: if verified() && hasProf()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.estat == "pendent"
+        && request.resource.data.llicencia == "ODbL-1.0"
+        && request.resource.data.tipus == "paret"
+        && str(request.resource.data.zone, 60) && str(request.resource.data.name, 80)
+        && request.resource.data.exp in ["exposat", "arrecerat"]
+        && str(request.resource.data.d, 200000)
+        && request.resource.data.keys().hasOnly(["userId", "tipus", "zone", "name", "exp", "d", "estat", "llicencia", "licAt", "creat"]);
+      allow update: if reviewer()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["estat", "motiu", "revisatPer", "revisatAt"])
+        && request.resource.data.estat in ["aprovada", "rebutjada"];
+      // qui l'ha enviada la pot retirar (i en esborrar el compte, totes); l'administració també
+      allow delete: if signed() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /parets/{id} {
+      allow read: if true;
+      allow create, update: if reviewer()
+        && request.resource.data.keys().hasOnly(["zone", "name", "exp", "d", "llicencia", "v", "aprovat"])
+        && request.resource.data.llicencia == "ODbL-1.0";
+      allow delete: if isAdmin();
+    }
+  }
+}

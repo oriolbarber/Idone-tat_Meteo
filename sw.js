@@ -1,7 +1,7 @@
 // CEM · Idoneïtat: desa l'app per obrir-la sense connexió. Previsió, mapes i radar van sempre a la xarxa
 // (la descàrrega per zona, per fer-la servir sense cobertura, arriba en un pas posterior).
-const CACHE = "cem-idoneitat-v2";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./app.css?v=2", "./app.js?v=2", "./zones.js?v=1",
+const CACHE = "cem-idoneitat-v3";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./app.css?v=3", "./app.js?v=3", "./zones.js?v=1", "./cloud.js?v=1",
   "./vendor/maplibre-gl.js?v=5.24.0", "./vendor/maplibre-gl.css?v=5.24.0",
   "./icons/logo.svg?v=1", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png?v=1"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, {cache:"reload"})))).then(() => self.skipWaiting())); });

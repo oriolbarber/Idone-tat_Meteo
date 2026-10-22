@@ -1,0 +1,48 @@
+# Publica les regles de Firestore cada cop que canvia firestore.rules (o a mà des de la pestanya Actions).
+# Cal el secret FIREBASE_SERVICE_ACCOUNT amb el JSON de la clau del compte de servei de Firebase.
+name: Publica les regles de Firestore
+
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules, firebase.json]
+  workflow_dispatch:
+
+concurrency:
+  group: firestore-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprova el secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::Falta el secret FIREBASE_SERVICE_ACCOUNT: les regles NO s'han publicat."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publica les regles
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          set +e
+          npx -y firebase-tools@latest deploy --only firestore:rules --project cem-meteo --non-interactive 2>&1 | tee "$RUNNER_TEMP/out.txt"
+          rc=${PIPESTATUS[0]}
+          rm -f "$RUNNER_TEMP/sa.json"
+          if [ "$rc" -ne 0 ]; then
+            # l'error, com a anotació (es veu al resum de l'execució sense obrir el registre)
+            grep -iE "error|denied|permission|403|404|enable" "$RUNNER_TEMP/out.txt" | tail -8 | while IFS= read -r l; do echo "::error::$l"; done
+            exit "$rc"
+          fi

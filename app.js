@@ -38,7 +38,8 @@ const CRIT_DEF = {
   comfLo:10, comfHi:24          // franja de sensació còmoda (°C)
 };
 let crit = Object.assign(structuredClone(CRIT_DEF), store.get("cem_crit", {}));
-let userWalls = store.get("cem_walls", []);               // parets traçades en aquest mòbil
+let userWalls = store.get("cem_walls", []);               // parets traçades en aquest mòbil (w.prop = estat de la proposta)
+let cloudWalls = store.get("cem_cloud_walls", []);        // parets aprovades per a tothom (col·lecció «parets», les porta cloud.js)
 let azFix = store.get("cem_azfix", {});                   // correcció manual: {"paretId:tram": az}
 let dayKey = null;                                        // dia triat (AAAA-MM-DD)
 let selZone = null;                                       // zona oberta a la fitxa
@@ -59,7 +60,23 @@ function sunPos(ms, lat, lon){
 
 /* ---------- parets ---------- */
 // Totes les parets d'una zona: les del catàleg i les traçades en aquest mòbil
-function wallsOf(z){ return z.walls.concat(userWalls.filter(w => w.zone === z.id)); }
+// Una paret pròpia ja aprovada no es repeteix: queda la versió de tothom
+function wallsOf(z){
+  const pub = cloudWalls.filter(w => w.zone === z.id), ids = new Set(pub.map(w => w.id));
+  return z.walls.concat(pub, userWalls.filter(w => w.zone === z.id && !(w.prop && ids.has(w.prop.id))));
+}
+// Estat d'una paret per a l'etiqueta: tothom | pendent | rebutjada | mòbil
+function wallState(w){
+  if(cloudWalls.includes(w) || w.src === "cataleg") return {k:"pub", t:"Aprovada · per a tothom"};
+  if(w.prop && w.prop.estat === "pendent") return {k:"pend", t:"Proposta pendent de revisió"};
+  if(w.prop && w.prop.estat === "rebutjada") return {k:"rej", t:"Rebutjada" + (w.prop.motiu ? ": " + w.prop.motiu : "")};
+  return {k:"mob", t:"Només en aquest mòbil"};
+}
+function wallTag(w){
+  const st = wallState(w), cls = {pub:"ok", pend:"mid", rej:"no", mob:"na"}[st.k];
+  return `<span class="wtag lv-${cls}">${esc(st.t)}</span>` +
+    ((st.k === "mob" || st.k === "rej") && userWalls.includes(w) ? `<button class="btn sm" type="button" data-propose="${w.id}">Proposa-la</button>` : "");
+}
 function segAz(w, i){ const f = azFix[w.id + ":" + i]; return f != null ? f : w.segs[i].azAuto; }
 // horitzó (graus) cap a l'azimut a; sense dades = 0
 function hzAt(hz, a){ if(!hz || !hz.length) return 0; const i = Math.round(((a % 360) + 360) % 360 / 5) % hz.length; return hz[i] || 0; }
@@ -469,7 +486,8 @@ function renderSheet(){
     w.segs.forEach((s, i) => {
       const az = segAz(w, i), sg = ev.segs.find(x => x.w === w && x.i === i);
       h += `<div class="wall"><div class="wh"><b>${esc(w.name)}${w.segs.length > 1 ? " · tram " + (i + 1) : ""}</b>` +
-        (az != null ? `${arrowSVG(az)}<span>Mira al <b>${cardOf(az)}</b> (${Math.round(az)}°)</span>` : `<span class="tx-mid">Orientació per fixar</span>`) + `</div>`;
+        (az != null ? `${arrowSVG(az)}<span>Mira al <b>${cardOf(az)}</b> (${Math.round(az)}°)</span>` : `<span class="tx-mid">Orientació per fixar</span>`) + `</div>` +
+        (i === 0 ? `<div class="wh">${wallTag(w)}</div>` : "");
       if(sg){
         const hrs = []; for(let hh = 7; hh <= 21; hh++){ const r = sg.rows.find(r => r.loc.key === dayKey && r.loc.h === hh); hrs.push(r); }
         const nowL = localOf(Date.now());
@@ -500,9 +518,13 @@ $("zBody").addEventListener("click", e => {
     if(a.dataset.az === "auto") delete azFix[k]; else azFix[k] = +a.dataset.az;
     store.set("cem_azfix", azFix); renderWalls(); renderAll(); return; }
   const x = e.target.closest("[data-exp] button[data-v]");
-  if(x){ const w = userWalls.find(w => w.id === x.parentElement.dataset.exp); if(w){ w.exp = x.dataset.v; saveWalls(); renderAll(); } return; }
+  if(x){ const w = userWalls.find(w => w.id === x.parentElement.dataset.exp);
+    if(w){ w.exp = x.dataset.v; saveWalls(); renderAll(); } else msg("Aquesta paret és de tothom: per canviar-ne l'exposició, traça-la i proposa-la de nou.", true); return; }
   if(e.target.closest("#drawStart")) startDraw();
 });
+// Proposar una paret: ho fa cloud.js (compte, acceptació de la llicència i enviament)
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("button[data-propose]"); if(!b) return;
+  if(window.CEM_CLOUD) CEM_CLOUD.propose(b.dataset.propose); else msg("El compte encara s'està carregant. Torna-ho a provar.", true); });
 function setRole(r){ role = r; store.set("cem_role", role); renderAll(); renderPanels(); }
 
 function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); }
@@ -646,7 +668,7 @@ function renderPanels(){
     `<label>Ratxa màxima (${mname})<span class="cv"><input type="range" min="20" max="100" step="5" value="${C.gustMax}" data-k="gustMax"><b>${C.gustMax} km/h</b></span></label>`;
   // parets
   $("wList").innerHTML = userWalls.length ? userWalls.map(w => { const z = ZONES.find(z => z.id === w.zone);
-    return `<div class="wli"><b>${esc(w.name)}</b><span class="muted">${esc(z ? z.name : "?")} · ${w.segs.length} tram${w.segs.length > 1 ? "s" : ""}</span>` +
+    return `<div class="wli"><b>${esc(w.name)}</b><span class="muted">${esc(z ? z.name : "?")} · ${w.segs.length} tram${w.segs.length > 1 ? "s" : ""}</span>${wallTag(w)}` +
       `<button class="btn" type="button" data-wdel="${w.id}">Esborra</button></div><div id="del-${w.id}" hidden></div>`; }).join("") : `<p class="note">Cap paret traçada.</p>`;
   const da = $("wDelAll"); da.innerHTML = "";
   if(userWalls.length > 1) slideConfirm(da, "Llisca per esborrar-les totes", () => { userWalls = []; azFix = {}; store.set("cem_azfix", azFix); saveWalls(); renderAll(); });

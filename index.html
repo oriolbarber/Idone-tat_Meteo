@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=2">
+<link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
 
@@ -98,6 +98,8 @@
   <div class="pbar"><button class="ib flat" type="button" data-close aria-label="Enrere">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Menú</h2><span></span></div>
   <nav class="plist">
+    <button type="button" data-page="pCompte"><b>Compte<span class="badge" id="accBadge" hidden>!</span></b><small id="peekAcc">Sense compte: entra per proposar parets</small></button>
+    <button type="button" data-page="pRevisio" id="rowRev" hidden><b>Revisió<span class="badge" id="revBadge" hidden></span></b><small id="peekRev">Propostes per aprovar</small></button>
     <button type="button" data-page="pAspecte"><b>Aspecte</b><small id="peekAsp"></small></button>
     <button type="button" data-page="pLlindars"><b>Llindars</b><small id="peekLl"></small></button>
     <button type="button" data-page="pParets"><b>Parets</b><small id="peekPar"></small></button>
@@ -154,6 +156,35 @@
   </div>
 </div>
 
+<div class="panel" id="pCompte" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Compte</h2><span></span></div>
+  <div class="pbody"><div class="acc" id="accBox"><p class="note">Carregant…</p></div></div>
+</div>
+
+<div class="panel" id="pRevisio" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Revisió</h2><span></span></div>
+  <div class="pbody" id="revBox"></div>
+</div>
+
+<div class="panel" id="pLlicencia" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Proposa la paret</h2><span></span></div>
+  <div class="pbody acc">
+    <p id="licWall"></p>
+    <div class="legal">
+      <p><b>Què passa ara:</b> la paret queda pendent. Quan una persona revisora l'aprovi, la veurà tothom i comptarà al veredicte de la zona.</p>
+      <p><b>Llicència:</b> les dades de la paret (traçat, orientació, horitzó i exposició) s'incorporen al catàleg de CEM, que es publica sota la llicència oberta <b>ODbL 1.0</b> (la mateixa que OpenStreetMap). Vol dir que CEM les pot publicar, modificar i compartir, i que qualsevol pot reutilitzar el catàleg citant-ne la font.</p>
+      <p><b>Garanties:</b> confirmes que la paret l'has traçada tu i que no l'has copiada de cap guia ni ressenya protegida.</p>
+      <p><b>Dades personals:</b> la paret aprovada no porta el teu nom. La proposta guarda qui l'ha enviada només fins que es revisa.</p>
+    </div>
+    <label class="ck"><input type="checkbox" id="licCk"> Accepto que la paret s'incorpori al catàleg sota la llicència ODbL 1.0.</label>
+    <div class="amsg" data-accmsg hidden></div>
+    <button class="btn pri" type="button" id="licSend">Envia la proposta</button>
+  </div>
+</div>
+
 <div class="panel" id="pFonts" hidden>
   <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Fonts i avís</h2><span></span></div>
@@ -162,7 +193,7 @@
     <p><b>Mapes i relleu:</b> © Institut Cartogràfic i Geològic de Catalunya (ICGC), llicència CC BY. Model del terreny de 5 m.</p>
     <p><b>Previsió i pluja passada:</b> Open-Meteo (open-meteo.com), CC BY 4.0. Gratuït només per a ús no comercial.</p>
     <p><b>Radar:</b> RainViewer.</p>
-    <p><b>Zones:</b> catàleg de prova; la base definitiva serà OpenStreetMap (© col·laboradors d'OpenStreetMap, ODbL).</p>
+    <p><b>Zones i parets:</b> catàleg de CEM, obert sota la llicència ODbL 1.0; la base de les zones serà OpenStreetMap (© col·laboradors d'OpenStreetMap, ODbL). Les parets les aporta la comunitat i les revisen persones voluntàries.</p>
     <p><b>Com es calcula:</b> la pluja de les últimes 72 h i el secat de la roca (segons el tipus de roca, el sol a la paret, el vent i la humitat); la tempesta; el confort (sensació tèrmica amb el sol a la paret, el vent, la humitat, la roba i si escales o assegures); l'adherència (roca massa calenta, freda o humida) i el vent màxim de la modalitat.</p>
     <p><b>Sempre vermell:</b> roca molla, pluja o tempesta prevista a la franja.</p>
   </div>
@@ -170,6 +201,7 @@
 
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
+<script src="cloud.js?v=1"></script>
 </body>
 </html>
