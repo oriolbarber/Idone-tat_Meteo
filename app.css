@@ -99,25 +99,35 @@ h2{font-size:1.3em;margin:0;line-height:1.15}
 .legend i{width:12px;height:12px;border-radius:50%;display:inline-block}
 body.drawing .zm{pointer-events:none;opacity:.5}
 
-/* marcador de zona: rodona de color + nota + icona (no només color) */
-.zm{position:relative;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:drop-shadow(0 2px 3px #0006)}
-.zm .b{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--surface);color:#fff;font-weight:800;font-family:var(--f-num);font-size:17px;position:relative}
+/* marcador de zona: la rodona és exactament al punt (el nom i el vent hi pengen sense moure-la) */
+.zm{position:relative;width:46px;height:46px;border:0;background:none;padding:0;cursor:pointer;filter:drop-shadow(0 2px 3px #0006)}
+.zm .b{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;border:3px solid var(--surface);color:#fff;font-weight:800;font-family:var(--f-num);font-size:17px}
 .zm .b svg{position:absolute;right:-6px;top:-6px;width:20px;height:20px;border-radius:50%;background:var(--surface);color:var(--ink);padding:2px}
-.zm .n{margin-top:2px;background:var(--surface);color:var(--ink);border-radius:8px;padding:1px 6px;font-size:12px;font-weight:700;white-space:nowrap}
-.zm .w{position:absolute;left:-22px;top:10px;width:26px;height:26px;color:var(--ink)}
+.zm .n{position:absolute;top:48px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--ink);border-radius:8px;padding:1px 6px;font-size:12px;font-weight:700;white-space:nowrap}
+.zm .w{position:absolute;left:-24px;top:10px;width:26px;height:26px;color:var(--ink)}
+.zc{border:0;background:none;padding:0;cursor:pointer;filter:drop-shadow(0 2px 4px #0006);display:block}
+.zc svg{display:block}
 .lv-ok{background:var(--ok)} .lv-mid{background:var(--mid)} .lv-no{background:var(--no)} .lv-na{background:var(--na)}
 .tx-ok{color:var(--ok)} .tx-mid{color:var(--mid)} .tx-no{color:var(--no)}
 
 /* fitxa inferior */
-/* la fitxa queda just a sobre de la barra de dies, que sempre és visible */
-.sheet{position:fixed;z-index:30;left:8px;right:8px;bottom:calc(var(--daybar-h,96px) - 8px + env(safe-area-inset-bottom,0px));
-  max-height:calc(100dvh - var(--daybar-h,96px) - 84px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
-  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 -6px 26px #0004;display:flex;flex-direction:column}
-@media (min-width:860px){.sheet{left:auto;width:430px;top:calc(76px + env(safe-area-inset-top,0px));max-height:none}}
+/* la fitxa ocupa tot l'ample i queda just a sobre de la barra de dies, que sempre és visible */
+.sheet{position:fixed;z-index:30;left:0;right:0;bottom:calc(var(--daybar-h,96px) - 8px + env(safe-area-inset-bottom,0px));
+  max-height:calc(100dvh - var(--daybar-h,96px) - 76px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line);box-shadow:0 -6px 26px #0004;display:flex;flex-direction:column}
 .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 0;flex:none}
 .sh-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:8px 14px 6px}
 .sh-h .muted{font-size:.85em;font-weight:600}
 .sh-body{overflow-y:auto;padding:4px 14px 18px;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+/* pantalla ampla: les peces de la fitxa en columnes, per aprofitar l'espai */
+@media (min-width:760px){
+  .sh-body{display:grid;gap:12px 16px;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .sh-body > .verd,.sh-body > .conf{grid-column:1}
+  .sh-body > .facts{grid-column:1}
+  .sh-body > .walls{grid-column:2;grid-row:1 / span 4}
+  .sh-body > details.more,.sh-body > .note{grid-column:1 / -1}
+}
+@media (min-width:1200px){.sh-body{grid-template-columns:repeat(3,minmax(0,1fr))}.sh-body > .walls{grid-column:2 / span 2}}
 
 .verd{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .vb{border-radius:14px;padding:10px 12px;border:2px solid transparent;display:flex;flex-direction:column;gap:2px;cursor:pointer;text-align:left;background:var(--surface-2)}

@@ -295,13 +295,17 @@ map.on("load", () => {
   map.addSource("walls", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
   map.addSource("wallArrows", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
   map.addSource("draw", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addSource("zones", {type:"geojson", data:{type:"FeatureCollection", features:[]}, cluster:true, clusterRadius:60, clusterMaxZoom:10,
+    clusterProperties: Object.fromEntries(LV_KEYS.map(k => [k, ["+", ["case", ["==", ["get", "lv"], k], 1, 0]]]))});
+  map.addLayer({id:"zones-hit", type:"circle", source:"zones", paint:{"circle-radius":1, "circle-opacity":0}});
+  map.on("render", () => { if(map.isSourceLoaded("zones")) updateMarkers(); });
   map.addLayer({id:"wall-line", type:"line", source:"walls", paint:{"line-color":"#d0201a", "line-width":["interpolate", ["linear"], ["zoom"], 10, 2, 16, 6]}, layout:{"line-cap":"round"}});
   map.addLayer({id:"wall-arrow", type:"symbol", source:"wallArrows", minzoom:12,
     layout:{"icon-image":"wall-arrow", "icon-rotate":["get", "az"], "icon-rotation-alignment":"map", "icon-allow-overlap":true, "icon-size":["interpolate", ["linear"], ["zoom"], 12, 0.6, 17, 1.1]}});
   map.addLayer({id:"draw-line", type:"line", source:"draw", filter:["==", "$type", "LineString"], paint:{"line-color":"#ffb000", "line-width":4, "line-dasharray":[2, 1]}});
   map.addLayer({id:"draw-pt", type:"circle", source:"draw", filter:["==", "$type", "Point"], paint:{"circle-radius":7, "circle-color":"#ffb000", "circle-stroke-color":"#000", "circle-stroke-width":2}});
   map.on("click", "wall-line", e => { if(drawing) return; const f = e.features[0]; const z = ZONES.find(z => z.id === f.properties.zone); if(z) openZone(z.id); });
-  applyBase(); applyLayers(); renderWalls();
+  applyBase(); applyLayers(); renderWalls(); renderMarkers();
   if(t3d) apply3D();
 });
 
@@ -312,23 +316,75 @@ const LV_IC = {
   no:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   na:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 12h10"/></svg>'
 };
-const markers = {};
+// Les zones van en una font GeoJSON agrupada: en allunyar-se, les properes s'ajunten en una rodona
+// amb un gràfic de % pels colors dels veredictes. Els marcadors són HTML i es recalculen en moure el mapa.
+const markers = {}, clusters = {};
+let markersOnScreen = {}, mkVer = 0;
+const LV_KEYS = ["ok", "mid", "no", "na"];
+function zonesGeoJSON(){
+  return {type:"FeatureCollection", features: ZONES.map(z => {
+    const v = zoneSlot(zoneEval(z), dayKey, slot), mid = v.rows[Math.floor(v.rows.length / 2)];
+    return {type:"Feature", geometry:{type:"Point", coordinates:[z.lon, z.lat]},
+      properties:{id:z.id, lv:v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), why:v.why, wd:mid ? mid.wd : -1, wkmh:mid ? Math.round(mid.wkmh) : -1}};
+  })};
+}
 function renderMarkers(){
-  if(!DATA) return;
-  ZONES.forEach(z => {
-    const v = zoneSlot(zoneEval(z), dayKey, slot), lvl = v.lv;
-    const midRow = v.rows[Math.floor(v.rows.length / 2)];
-    const wind = ly.wind && midRow ? `<svg class="w" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(${(midRow.wd + 180) % 360}deg)"><path d="M12 2l7 9h-4.5v11h-5V11H5z" fill="currentColor" stroke="var(--surface)" stroke-width="1.2" stroke-linejoin="round"/></svg>` : "";
-    const html = `<div class="b lv-${lvl}">${v.sc == null ? "–" : Math.round(v.sc)}${LV_IC[lvl]}</div>${wind}<div class="n">${esc(z.name)}${ly.wind && midRow ? " · " + Math.round(midRow.wkmh) + " km/h" : ""}</div>`;
-    let m = markers[z.id];
-    if(!m){
-      const el = document.createElement("button"); el.className = "zm"; el.type = "button";
-      el.addEventListener("click", ev => { ev.stopPropagation(); if(!drawing) openZone(z.id); });
-      m = markers[z.id] = new maplibregl.Marker({element: el, anchor: "center"}).setLngLat([z.lon, z.lat]).addTo(map);
+  if(!DATA || !map.getSource("zones")) return;
+  mkVer++; map.getSource("zones").setData(zonesGeoJSON());
+}
+function zoneMarkerHTML(p){
+  const z = ZONES.find(z => z.id === p.id), lvl = p.lv;
+  const wind = ly.wind && p.wd >= 0 ? `<svg class="w" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(${(p.wd + 180) % 360}deg)"><path d="M12 2l7 9h-4.5v11h-5V11H5z" fill="currentColor" stroke="var(--surface)" stroke-width="1.2" stroke-linejoin="round"/></svg>` : "";
+  return `<span class="b lv-${lvl}">${p.sc < 0 ? "–" : p.sc}${LV_IC[lvl]}</span>${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
+}
+// Rodona d'un grup: anell amb el % de zones de cada color i el nombre de zones al centre
+function donutHTML(p){
+  const n = p.point_count, r = n < 10 ? 30 : n < 50 ? 34 : 40, w = 9, C = 2 * Math.PI * (r - w / 2);
+  let off = 0;
+  const arcs = LV_KEYS.map(k => { const f = (p[k] || 0) / n; if(!f) return "";
+    const a = `<circle r="${r - w / 2}" cx="${r}" cy="${r}" fill="none" stroke="var(--${k === "na" ? "na" : k})" stroke-width="${w}" stroke-dasharray="${f * C} ${C}" stroke-dashoffset="${-off * C}" transform="rotate(-90 ${r} ${r})"/>`;
+    off += f; return a; }).join("");
+  const okp = Math.round((p.ok || 0) / n * 100);
+  return `<svg width="${2 * r}" height="${2 * r}" viewBox="0 0 ${2 * r} ${2 * r}" aria-hidden="true"><circle r="${r}" cx="${r}" cy="${r}" fill="var(--surface)"/>${arcs}` +
+    `<text x="${r}" y="${r - 2}" text-anchor="middle" font-size="${r > 30 ? 17 : 15}" font-weight="800" fill="var(--ink)">${n}</text>` +
+    `<text x="${r}" y="${r + 13}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--muted)">${okp}% ✓</text></svg>`;
+}
+function updateMarkers(){
+  if(!map.getSource("zones") || !map.isSourceLoaded("zones")) return;
+  const next = {};
+  map.querySourceFeatures("zones").forEach(f => {
+    const p = f.properties, c = f.geometry.coordinates;
+    if(p.cluster){
+      const id = "c" + p.cluster_id;
+      let m = clusters[id];
+      if(!m){
+        const el = document.createElement("button"); el.type = "button"; el.className = "zc";
+        el.addEventListener("click", ev => { ev.stopPropagation(); if(drawing) return;
+          map.getSource("zones").getClusterExpansionZoom(p.cluster_id).then(zm => map.easeTo({center: c, zoom: zm + 0.8})); });
+        m = clusters[id] = new maplibregl.Marker({element: el}).setLngLat(c);
+      }
+      const el = m.getElement();
+      if(el.dataset.v !== String(mkVer)){ el.dataset.v = mkVer; el.innerHTML = donutHTML(p);
+        el.setAttribute("aria-label", `${p.point_count} zones: ${p.ok || 0} recomanades, ${p.mid || 0} amb limitacions, ${p.no || 0} no recomanades. Toca per acostar-t'hi.`); }
+      next[id] = m;
+    }else{
+      const id = p.id;
+      let m = markers[id];
+      if(!m){
+        const el = document.createElement("button"); el.type = "button"; el.className = "zm";
+        el.addEventListener("click", ev => { ev.stopPropagation(); if(!drawing) openZone(id); });
+        m = markers[id] = new maplibregl.Marker({element: el}).setLngLat(c);
+      }
+      const el = m.getElement();
+      if(el.dataset.v !== String(mkVer)){ el.dataset.v = mkVer; el.innerHTML = zoneMarkerHTML(p);
+        const z = ZONES.find(z => z.id === id);
+        el.setAttribute("aria-label", `${z.name}: ${LV_TXT[p.lv]}${p.sc >= 0 ? ", " + p.sc + " sobre 10" : ""}. ${p.why}`); }
+      next[id] = m;
     }
-    const el = m.getElement(); el.innerHTML = html;
-    el.setAttribute("aria-label", `${z.name}: ${LV_TXT[lvl]}${v.sc != null ? ", " + Math.round(v.sc) + " sobre 10" : ""}. ${v.why}`);
   });
+  for(const id in next) if(!markersOnScreen[id]) next[id].addTo(map);
+  for(const id in markersOnScreen) if(!next[id]) markersOnScreen[id].remove();
+  markersOnScreen = next;
 }
 function renderWalls(){
   if(!map.getSource("walls")) return;
