@@ -1,0 +1,3882 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.4 2390de5a",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-23T13:35:55Z",
+    "timestamp_areas_base": "2026-10-23T11:46:06Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 459278686,
+  "lat": 41.7264784,
+  "lon": 2.2498623,
+  "tags": {
+    "name": "Salt del Prat",
+    "name:ca": "Salt del Prat",
+    "natural": "cliff",
+    "sport": "climbing",
+    "waterway": "waterfall"
+  }
+},
+{
+  "type": "node",
+  "id": 1241557934,
+  "lat": 41.7493189,
+  "lon": 2.2654914,
+  "tags": {
+    "name": "Cingles del Folló",
+    "name:ca": "Cingles del Folló",
+    "place": "locality",
+    "sport": "climbing",
+    "tourism": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1887917065,
+  "lat": 41.4165934,
+  "lon": 1.9694572,
+  "tags": {
+    "name": "Vies d'escalada",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 1933364128,
+  "lat": 41.2643096,
+  "lon": 0.9291228,
+  "tags": {
+    "name": "L'Herbolari",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2035527892,
+  "lat": 41.8044948,
+  "lon": 2.2080585,
+  "tags": {
+    "access": "yes",
+    "name": "Via ferrada de les Baumes Corcades",
+    "sport": "climbing",
+    "tourism": "attraction",
+    "url": "https://deandar.com/ferratas/via-ferrata-baumes-corcades",
+    "wikidata": "Q20106859",
+    "wikipedia": "ca:Via ferrada de les Baumes Corcades"
+  }
+},
+{
+  "type": "node",
+  "id": 2288542541,
+  "lat": 41.5834411,
+  "lon": 1.8164512,
+  "tags": {
+    "alt_name": "Canal de les Damas",
+    "name": "Canal de les Dames",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 2412881606,
+  "lat": 41.8091125,
+  "lon": 2.9499722,
+  "tags": {
+    "access": "yes",
+    "amenity": "parking",
+    "fee": "no",
+    "name": "Solius",
+    "name:ca": "Solius",
+    "parking": "street_side",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2416792669,
+  "lat": 42.3167229,
+  "lon": 2.1607778,
+  "tags": {
+    "name": "La Lleixa",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2416792693,
+  "lat": 42.3398323,
+  "lon": 2.1671944,
+  "tags": {
+    "name": "Gours",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2416792705,
+  "lat": 42.2278595,
+  "lon": 1.3381112,
+  "tags": {
+    "name": "Organyà",
+    "name:ca": "Organyà",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2416792743,
+  "lat": 42.1790848,
+  "lon": 1.3943334,
+  "tags": {
+    "leisure": "pitch",
+    "loc_name": "Perles",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2416792794,
+  "lat": 42.1772232,
+  "lon": 1.3053889,
+  "tags": {
+    "name": "Coll Piquer",
+    "name:ca": "Coll Piquer",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2470096440,
+  "lat": 41.5891601,
+  "lon": 1.7978663,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 2609200003,
+  "lat": 41.2615385,
+  "lon": 0.9044543,
+  "tags": {
+    "addr:city": "Cornudella de Montsant",
+    "addr:housenumber": "41",
+    "addr:postcode": "43360",
+    "addr:street": "Avinguda del Priorat",
+    "name": "Goma2",
+    "opening_hours": "Tu-Sa 09:30-13:00,17:30-20:00; PH closed",
+    "phone": "+34 977 82 12 32",
+    "shop": "sports",
+    "sport": "climbing",
+    "website": "https://goma2.net",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 3038155442,
+  "lat": 42.1967332,
+  "lon": 1.8070074,
+  "tags": {
+    "name": "Via ferrada Cal Curt",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 3038155443,
+  "lat": 42.1964926,
+  "lon": 1.8066925,
+  "tags": {
+    "name": "Via ferrada Roques d'Empalomar",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 3042778880,
+  "lat": 42.1978495,
+  "lon": 1.8063344,
+  "tags": {
+    "name": "Via ferrada Canalassa",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 3042837637,
+  "lat": 41.6069311,
+  "lon": 1.8134695,
+  "tags": {
+    "name": "Canal del Mejillón",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 3042837639,
+  "lat": 41.6070050,
+  "lon": 1.8133860,
+  "tags": {
+    "description": "Via ferrada tancada indefinidament",
+    "name": "Via ferrada la Teresina (tancada)",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 3078105738,
+  "lat": 42.0375117,
+  "lon": 1.8796772,
+  "tags": {
+    "name": "Rocòdrom",
+    "name:ca": "Rocòdrom",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 3170888736,
+  "lat": 41.2626951,
+  "lon": 0.9319262,
+  "tags": {
+    "name": "Recingle del Tití",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 3250677066,
+  "lat": 41.5757291,
+  "lon": 1.8885726,
+  "tags": {
+    "name": "Balma de l'Espluga",
+    "name:ca": "Balma de l'Espluga",
+    "natural": "cave_entrance",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 3612691296,
+  "lat": 41.4386550,
+  "lon": 2.0180738,
+  "tags": {
+    "climbing:bolted": "yes",
+    "climbing:grade:french:max": "7a",
+    "climbing:grade:french:min": "4",
+    "multipitch": "no",
+    "name": "les Escletxes",
+    "name:ca": "les Escletxes",
+    "place": "locality",
+    "rock": "limestone",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 3791955085,
+  "lat": 42.0450444,
+  "lon": 0.6881889,
+  "tags": {
+    "alt_name": "Via ferrada del Barranc de la Pardina",
+    "highway": "via_ferrata",
+    "name": "Via ferrada Urquiza-Olmo",
+    "sport": "climbing",
+    "tourism": "attraction",
+    "via_ferrata_scale": "5"
+  }
+},
+{
+  "type": "node",
+  "id": 3820699786,
+  "lat": 42.1126654,
+  "lon": 1.4196121,
+  "tags": {
+    "name": "Via ferrada Extasy of Flying",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 4106350933,
+  "lat": 41.7663318,
+  "lon": 2.2378526,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4123999290,
+  "lat": 41.2764351,
+  "lon": 0.7678741,
+  "tags": {
+    "name": "4-Bloc del Pork",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 4131006207,
+  "lat": 41.2901836,
+  "lon": 0.7800065,
+  "tags": {
+    "addr:street": "Camí del Molí del Vilar",
+    "name": "La Catedral",
+    "name:ca": "La Catedral",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4131058211,
+  "lat": 41.2931832,
+  "lon": 0.7797528,
+  "tags": {
+    "addr:street": "Camí del Molí del Vilar",
+    "climbing:sport": "yes",
+    "name": "Can Regino",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4138939289,
+  "lat": 41.2972168,
+  "lon": 0.7750501,
+  "tags": {
+    "name": "10-Can Torxa",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 4144177338,
+  "lat": 41.3550720,
+  "lon": 0.9649112,
+  "tags": {
+    "name": "Vilanova de Prades",
+    "name:ca": "Vilanova de Prades",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4144192708,
+  "lat": 41.3494685,
+  "lon": 0.9456409,
+  "tags": {
+    "name": "Sector Penya Alta",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4144338406,
+  "lat": 41.8054830,
+  "lon": 2.9501817,
+  "tags": {
+    "name": "Sector Solius Central Sud",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4237618878,
+  "lat": 41.7792450,
+  "lon": 3.0432450,
+  "tags": {
+    "highway": "via_ferrata",
+    "name": "Via Ferrada Cala del Molí",
+    "sport": "climbing",
+    "via_ferrata_scale": "1"
+  }
+},
+{
+  "type": "node",
+  "id": 4239379606,
+  "lat": 41.5914307,
+  "lon": 1.7927576,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4253147539,
+  "lat": 41.8684483,
+  "lon": 2.9914800,
+  "tags": {
+    "climbing:rock": "sandstone",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4273377548,
+  "lat": 41.9591755,
+  "lon": 2.3415824,
+  "tags": {
+    "name": "Sant Feliuet de Savassona",
+    "name:en": "Boulders de Savassona",
+    "place": "locality",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4455695293,
+  "lat": 41.9718963,
+  "lon": 2.8169557,
+  "tags": {
+    "addr:city": "Girona",
+    "addr:postcode": "17003",
+    "addr:street": "Carrer de la Universitat de Montpeller",
+    "name": "Cal Mico",
+    "name:ca": "Cal Mico",
+    "sport": "climbing",
+    "website": "https://www.calmico.cat/"
+  }
+},
+{
+  "type": "node",
+  "id": 4637881456,
+  "lat": 41.4369161,
+  "lon": 2.1839032,
+  "tags": {
+    "leisure": "pitch",
+    "name": "rocòdrom",
+    "name:ca": "rocòdrom",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 4924053641,
+  "lat": 42.3071240,
+  "lon": 2.1674567,
+  "tags": {
+    "name": "Via ferrada Roca de la Creu",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 4935362542,
+  "lat": 41.6012188,
+  "lon": 1.7890372,
+  "tags": {
+    "name": "Camí equipat Torrent del Lloro",
+    "name:ca": "Camí equipat Torrent del Lloro",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 5128662814,
+  "lat": 42.0443039,
+  "lon": 0.6706268,
+  "tags": {
+    "name": "Via ferrada Cast Urquiza Olmo",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 5128662819,
+  "lat": 42.0442360,
+  "lon": 0.6706804,
+  "tags": {
+    "name": "Via ferrada Teletubbies",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 5241244411,
+  "lat": 41.3089110,
+  "lon": 1.1536800,
+  "tags": {
+    "name": "Barranc dels Tres Pilans",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 5250244306,
+  "lat": 41.6258592,
+  "lon": 1.8769185,
+  "tags": {
+    "name": "Via ferrada Turó de l'Escletxa",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 5420180863,
+  "lat": 41.5366922,
+  "lon": 2.0719365,
+  "tags": {
+    "leisure": "pitch",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 5502211695,
+  "lat": 41.6011037,
+  "lon": 1.8065735,
+  "tags": {
+    "name": "Salamandra Via Normal",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 5584710853,
+  "lat": 42.0470306,
+  "lon": 0.8888021,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 5584710854,
+  "lat": 42.0471773,
+  "lon": 0.8864216,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 5584710855,
+  "lat": 42.0473574,
+  "lon": 0.8845261,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 5873682709,
+  "lat": 41.5365579,
+  "lon": 2.0988953,
+  "tags": {
+    "name": "La Panxa del Bou",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6138738093,
+  "lat": 41.3081516,
+  "lon": 1.1600716,
+  "tags": {
+    "name": "Castell Dalmau",
+    "name:ca": "Castell Dalmau",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6164576915,
+  "lat": 41.3188562,
+  "lon": 1.1588730,
+  "tags": {
+    "name": "La Xina",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6164597666,
+  "lat": 41.3081970,
+  "lon": 1.1601528,
+  "tags": {
+    "name": "Castell Dalmau",
+    "name:ca": "Castell Dalmau",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6233576330,
+  "lat": 42.0299807,
+  "lon": 0.7558883,
+  "tags": {
+    "name": "Climbing site",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6397121948,
+  "lat": 41.2621347,
+  "lon": 0.7814831,
+  "tags": {
+    "climbing": "crag",
+    "name": "Grau de l'Enderrocada",
+    "name:ca": "Grau de l'Enderrocada",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "node",
+  "id": 6417409040,
+  "lat": 42.2265023,
+  "lon": 1.8872032,
+  "tags": {
+    "name": "les Esposes",
+    "name:ca": "les Esposes",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6539013028,
+  "lat": 41.3137303,
+  "lon": 1.1548511,
+  "tags": {
+    "name": "Llosa Negra",
+    "name:ca": "Llosa Negra",
+    "place": "locality",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6660353756,
+  "lat": 42.7043186,
+  "lon": 0.8699540,
+  "tags": {
+    "alt_name": "Via herrada eth Taro d'Arties, Roca Blanca",
+    "leisure": "sport",
+    "name": "Via ferrada eth Taro d'Arties, Roca Blanca",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6723801300,
+  "lat": 41.3174160,
+  "lon": 1.1666369,
+  "tags": {
+    "leaf_cycle": "mixed",
+    "leaf_type": "mixed",
+    "name": "Clot d'en Goda",
+    "name:ca": "Clot d'en Goda",
+    "natural": "wood",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6757766771,
+  "lat": 42.2283003,
+  "lon": 1.7357853,
+  "tags": {
+    "climbing:boulder": "3",
+    "climbing:rock": "no",
+    "fee": "no",
+    "name": "Rocodrom",
+    "outdoor": "yes",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6757927327,
+  "lat": 42.2474973,
+  "lon": 1.7226954,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6814184965,
+  "lat": 41.2886276,
+  "lon": 0.7812553,
+  "tags": {
+    "addr:street": "Camí del Molí del Vilar",
+    "climbing:sport": "yes",
+    "name": "La Visera",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6814184974,
+  "lat": 41.2880328,
+  "lon": 0.7815345,
+  "tags": {
+    "addr:street": "Camí del Molí del Vilar",
+    "climbing:sport": "yes",
+    "name": "Racó de la Coma Closa",
+    "name:ca": "Racó de la Coma Closa",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6827870826,
+  "lat": 41.2959939,
+  "lon": 0.7862039,
+  "tags": {
+    "climbing:sport": "yes",
+    "name": "Ca la Marta",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6827870839,
+  "lat": 41.2947506,
+  "lon": 0.7887748,
+  "tags": {
+    "climbing:sport": "yes",
+    "name": "Racó de la Taverna",
+    "name:ca": "Racó de la Taverna",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6827870841,
+  "lat": 41.2917426,
+  "lon": 0.7789213,
+  "tags": {
+    "addr:street": "Camí del Molí del Vilar",
+    "climbing:sport": "yes",
+    "name": "Neorural",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6827870874,
+  "lat": 41.2937939,
+  "lon": 0.7898292,
+  "tags": {
+    "climbing:sport": "yes",
+    "name": "Racó de la Taverna II",
+    "name:ca": "Racó de la Taverna II",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6892989312,
+  "lat": 42.8026556,
+  "lon": 0.7076760,
+  "tags": {
+    "name": "via ferrata Cledes",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 6909544715,
+  "lat": 42.0399246,
+  "lon": 0.6822209,
+  "tags": {
+    "highway": "via_ferrata",
+    "name": "Via ferrada Canal de los Olmos",
+    "sport": "climbing",
+    "tourism": "attraction",
+    "via_ferrata_scale": "5"
+  }
+},
+{
+  "type": "node",
+  "id": 6945382223,
+  "lat": 41.8178636,
+  "lon": 2.1871444,
+  "tags": {
+    "climbing": "crag",
+    "climbing:bolted": "yes",
+    "name": "Can Fàcil",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 7093620492,
+  "lat": 41.4145733,
+  "lon": 2.1498057,
+  "tags": {
+    "climbing": "boulder",
+    "climbing:sport": "yes",
+    "description": "Muro de unos 3 metros con muchos agujeros. Para escalada horizontal. Buenas vistas.",
+    "fee": "no",
+    "informal": "yes",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 7142789194,
+  "lat": 41.3053960,
+  "lon": 1.7039922,
+  "tags": {
+    "climbing": "crag",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 7247089109,
+  "lat": 42.2719999,
+  "lon": 1.8510890,
+  "tags": {
+    "name": "Riugréixer",
+    "name:ca": "Riugréixer",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 7985105177,
+  "lat": 41.5757131,
+  "lon": 1.8229841,
+  "tags": {
+    "climbing": "crag",
+    "fee": "no",
+    "name": "totxo de l'estel",
+    "name:ca": "totxo de l'estel",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 7985105178,
+  "lat": 41.5756303,
+  "lon": 1.8230780,
+  "tags": {
+    "climbing": "crag",
+    "name": "Placa de l'Indi",
+    "name:ca": "Placa de l'Indi",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 7985305628,
+  "lat": 41.5755382,
+  "lon": 1.8239576,
+  "tags": {
+    "climbing": "crag",
+    "fee": "no",
+    "name": "els Graus",
+    "name:ca": "els Graus",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8111070795,
+  "lat": 41.2342274,
+  "lon": 1.3454883,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8111073139,
+  "lat": 41.2378744,
+  "lon": 1.3406048,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8180034134,
+  "lat": 41.5548676,
+  "lon": 2.3396400,
+  "tags": {
+    "name": "escalada Cellecs",
+    "playground": "climbingwall",
+    "sport": "climbing",
+    "wikidata": "Q21530974",
+    "wikipedia": "ca:Roques de Céllecs"
+  }
+},
+{
+  "type": "node",
+  "id": 8224382592,
+  "lat": 41.0618702,
+  "lon": 0.9006715,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8335409181,
+  "lat": 42.2765544,
+  "lon": 0.8752225,
+  "tags": {
+    "name": "Lo Barrancot",
+    "natural": "gorge",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8355603027,
+  "lat": 42.2875673,
+  "lon": 0.9368442,
+  "tags": {
+    "climbing:sport": "yes",
+    "natural": "cliff",
+    "source": "survey;gps",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8435954617,
+  "lat": 41.5576500,
+  "lon": 2.3399704,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8614663523,
+  "lat": 41.8113545,
+  "lon": 2.0938510,
+  "tags": {
+    "name": "Boulder",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8748409128,
+  "lat": 41.3175666,
+  "lon": 1.1587582,
+  "tags": {
+    "name": "Piló Suicida",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8748409762,
+  "lat": 41.3179239,
+  "lon": 1.1588788,
+  "tags": {
+    "name": "La Penya darrera el Piló",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8748419598,
+  "lat": 41.3173989,
+  "lon": 1.1596304,
+  "tags": {
+    "name": "Els Tres Grans",
+    "name:ca": "Els Tres Grans",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8748420039,
+  "lat": 41.3170921,
+  "lon": 1.1585664,
+  "tags": {
+    "name": "Penya Roja",
+    "name:ca": "Penya Roja",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8748431517,
+  "lat": 41.3168564,
+  "lon": 1.1605322,
+  "tags": {
+    "name": "La Platgeta",
+    "name:ca": "La Platgeta",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8822315853,
+  "lat": 42.2812655,
+  "lon": 2.5909524,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8822315854,
+  "lat": 42.2807769,
+  "lon": 2.5889161,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8879856217,
+  "lat": 42.8019363,
+  "lon": 0.7045457,
+  "tags": {
+    "name": "Rocodrom",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8912222587,
+  "lat": 42.2677040,
+  "lon": 2.0836690,
+  "tags": {
+    "climbing:grade:french:max": "8a+",
+    "climbing:grade:french:min": "5",
+    "name": "Paret del malpàs",
+    "place": "locality",
+    "sport": "climbing",
+    "website": "https://www.thecrag.com/climbing/spain/montgrony/area/155573778"
+  }
+},
+{
+  "type": "node",
+  "id": 8992536419,
+  "lat": 41.4337625,
+  "lon": 2.1758768,
+  "tags": {
+    "leisure": "pitch",
+    "name": "mini-rocòdrom",
+    "name:ca": "mini-rocòdrom",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 8999158377,
+  "lat": 42.0082337,
+  "lon": 2.4480593,
+  "tags": {
+    "access": "yes",
+    "climbing:sport": "yes",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337225066,
+  "lat": 41.3018308,
+  "lon": 0.7743115,
+  "tags": {
+    "name": "Racó de les Espadelles",
+    "name:ca": "Racó de les Espadelles",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337249400,
+  "lat": 41.3006863,
+  "lon": 0.7824630,
+  "tags": {
+    "name": "Bombo Taronja",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337249401,
+  "lat": 41.3003821,
+  "lon": 0.7818230,
+  "tags": {
+    "name": "Bona Vista",
+    "name:ca": "Bona Vista",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337265048,
+  "lat": 41.3008652,
+  "lon": 0.7794208,
+  "tags": {
+    "name": "Cova del Cavall",
+    "name:ca": "Cova del Cavall",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337269274,
+  "lat": 41.3021147,
+  "lon": 0.7722525,
+  "tags": {
+    "name": "Puntas Espadelles",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337277051,
+  "lat": 41.3007352,
+  "lon": 0.7783204,
+  "tags": {
+    "name": "Soledad",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9337277052,
+  "lat": 41.3010205,
+  "lon": 0.7767764,
+  "tags": {
+    "name": "La Mainadera",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9350338039,
+  "lat": 41.5749903,
+  "lon": 1.8248513,
+  "tags": {
+    "climbing": "crag",
+    "fee": "no",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9515022464,
+  "lat": 41.8671985,
+  "lon": 0.9558002,
+  "tags": {
+    "climbing": "crag",
+    "name": "L'Indret",
+    "name:ca": "L'Indret",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9515022465,
+  "lat": 41.8730069,
+  "lon": 0.9854534,
+  "tags": {
+    "climbing": "crag",
+    "name": "Penyes de Mania",
+    "name:ca": "Penyes de Mania",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9568248610,
+  "lat": 41.2507872,
+  "lon": 0.9449082,
+  "tags": {
+    "name": "El Falcó",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 9699126450,
+  "lat": 41.5547979,
+  "lon": 2.3393950,
+  "tags": {
+    "name": "escalada Cellecs",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10205105481,
+  "lat": 41.2751376,
+  "lon": 1.9791258,
+  "tags": {
+    "leisure": "sports",
+    "name": "rocòdrom infantil",
+    "name:ca": "rocòdrom infantil",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10205105482,
+  "lat": 41.2751245,
+  "lon": 1.9790589,
+  "tags": {
+    "leisure": "sports",
+    "name": "rocòdrom infantil",
+    "name:ca": "rocòdrom infantil",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10605513952,
+  "lat": 41.3120610,
+  "lon": 1.1535856,
+  "tags": {
+    "description": "Sector d'escalada Lo Terrall",
+    "name": "Lo Terrall",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10605533190,
+  "lat": 41.3222730,
+  "lon": 1.1637213,
+  "tags": {
+    "description": "Sector d'escalada de la Conxinxina",
+    "name": "La Conxinxina",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10605544506,
+  "lat": 41.3200519,
+  "lon": 1.1839093,
+  "tags": {
+    "description": "Sector d'escalada El Toll de la Paret",
+    "name": "El Toll de la Paret",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10892982819,
+  "lat": 41.4145241,
+  "lon": 2.1494650,
+  "tags": {
+    "climbing": "boulder",
+    "climbing:sport": "yes",
+    "description": "Muro de unos 3 metros con muchos agujeros. Para escalada horizontal. Buenas vistas.",
+    "fee": "no",
+    "informal": "yes",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 10925756404,
+  "lat": 41.2669438,
+  "lon": 0.9590217,
+  "tags": {
+    "description": "Sports climbing",
+    "name": "El Didot",
+    "place": "locality",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11045933705,
+  "lat": 41.3822844,
+  "lon": 2.1553940,
+  "tags": {
+    "leisure": "pitch",
+    "name": "rocòdrom infantil",
+    "name:ca": "rocòdrom infantil",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11208000489,
+  "lat": 42.7050240,
+  "lon": 0.8701113,
+  "tags": {
+    "leisure": "sport",
+    "name": "Via Ferrata Le Circ du Soleil i Le Circ de la Lune K7+ i K7",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11341479123,
+  "lat": 41.8061574,
+  "lon": 2.9528744,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11348344785,
+  "lat": 41.2403752,
+  "lon": 0.9359542,
+  "tags": {
+    "name": "Placa Duc",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11869878256,
+  "lat": 40.8897288,
+  "lon": 0.3148767,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11869878257,
+  "lat": 40.8955742,
+  "lon": 0.2940554,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11869878258,
+  "lat": 40.8984789,
+  "lon": 0.3075652,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11869883371,
+  "lat": 40.8827750,
+  "lon": 0.2952302,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11869883372,
+  "lat": 40.8888817,
+  "lon": 0.2963334,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11869883373,
+  "lat": 40.8957383,
+  "lon": 0.2916407,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 11888950256,
+  "lat": 41.0376861,
+  "lon": 0.4869819,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 12183975105,
+  "lat": 42.5494535,
+  "lon": 1.3157603,
+  "tags": {
+    "name": "Via ferrada del Salt del Botanal",
+    "sport": "climbing",
+    "tourism": "attraction"
+  }
+},
+{
+  "type": "node",
+  "id": 12319119495,
+  "lat": 41.5424364,
+  "lon": 2.4533611,
+  "tags": {
+    "addr:housenumber": "62",
+    "addr:street": "Antoni de Capmany",
+    "name": "Búlder Planet",
+    "opening_hours": "Mo-Th 10:00-14:00, 16:00-22:00; Fr 10:00-14:00, 16:00-21:00; Sa, Su 10:00-14:30, 16:30-20:30",
+    "sport": "climbing",
+    "website": "https://www.bulderplanet.com/maresme/"
+  }
+},
+{
+  "type": "node",
+  "id": 12548777579,
+  "lat": 41.7825088,
+  "lon": 2.2261426,
+  "tags": {
+    "description": "drytooling",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 12677537107,
+  "lat": 40.7504868,
+  "lon": 0.3177982,
+  "tags": {
+    "climbing": "crag",
+    "name": "Canal Amunt",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 12708103071,
+  "lat": 42.0210412,
+  "lon": 2.6109710,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 12779336555,
+  "lat": 41.6074044,
+  "lon": 2.6453333,
+  "tags": {
+    "leisure": "sports",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 12951319969,
+  "lat": 41.6259081,
+  "lon": 2.0919042,
+  "tags": {
+    "climbing": "crag",
+    "height": "20",
+    "name": "Xaragall del Foió",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13200827593,
+  "lat": 41.5983089,
+  "lon": 1.7504682,
+  "tags": {
+    "climbing": "crag",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13289082798,
+  "lat": 42.2821842,
+  "lon": 2.0165359,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13307569022,
+  "lat": 41.6034754,
+  "lon": 1.8156642,
+  "tags": {
+    "climbing": "crag",
+    "name": "cadena",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13352907901,
+  "lat": 41.7334297,
+  "lon": 2.2413942,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13353082001,
+  "lat": 41.7595656,
+  "lon": 2.2311338,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13354246141,
+  "lat": 41.7601566,
+  "lon": 2.2309267,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13354250347,
+  "lat": 41.0826334,
+  "lon": 0.8227913,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13354250348,
+  "lat": 41.0803189,
+  "lon": 0.8234118,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13354300196,
+  "lat": 41.0506945,
+  "lon": 0.8755860,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13516923320,
+  "lat": 41.2728866,
+  "lon": 1.9377937,
+  "tags": {
+    "climbing": "crag",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13547078598,
+  "lat": 41.5757207,
+  "lon": 1.8227992,
+  "tags": {
+    "books": "Topo \"Montserrat Cara Sur\" (Volumen 1)",
+    "climbing": "crag",
+    "height": "22",
+    "name": "Placa del Pi",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13547133881,
+  "lat": 41.5850819,
+  "lon": 1.8115159,
+  "tags": {
+    "climbing": "crag",
+    "climbing:routes": "16",
+    "height": "32",
+    "name": "Sector Recuperació (La Vinya Nova)",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13620118285,
+  "lat": 42.2281531,
+  "lon": 1.8525575,
+  "tags": {
+    "climbing": "crag",
+    "name": "Escalada - Cingles de les Pasteres 1",
+    "sport": "climbing",
+    "website": "https://toposbergueda.blogspot.com/2023/05/cingles-de-les-pasteres-guardiola-de.html"
+  }
+},
+{
+  "type": "node",
+  "id": 13620118286,
+  "lat": 42.2281391,
+  "lon": 1.8541093,
+  "tags": {
+    "climbing": "crag",
+    "name": "Escalada - Cingles de les Pasteres 2",
+    "sport": "climbing",
+    "website": "https://toposbergueda.blogspot.com/2023/05/cingles-de-les-pasteres-guardiola-de.html"
+  }
+},
+{
+  "type": "node",
+  "id": 13646967298,
+  "lat": 41.4273258,
+  "lon": 1.8743023,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13646967299,
+  "lat": 41.4277862,
+  "lon": 1.8735169,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13646967300,
+  "lat": 41.4290267,
+  "lon": 1.8714997,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698251102,
+  "lat": 41.2517631,
+  "lon": 0.7309374,
+  "tags": {
+    "climbing": "crag",
+    "name": "totxos del camí",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "node",
+  "id": 13698251151,
+  "lat": 41.2575355,
+  "lon": 0.7511474,
+  "tags": {
+    "climbing": "crag",
+    "name": "Lo paredón",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698255917,
+  "lat": 41.2538166,
+  "lon": 0.7299732,
+  "tags": {
+    "climbing": "crag",
+    "name": "Els solans",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "node",
+  "id": 13698288938,
+  "lat": 41.2576989,
+  "lon": 0.7413711,
+  "tags": {
+    "climbing": "crag",
+    "name": "Els tormegals",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698310174,
+  "lat": 41.2609005,
+  "lon": 0.7401369,
+  "tags": {
+    "climbing": "crag",
+    "name": "Can xixanta",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698404246,
+  "lat": 41.2580736,
+  "lon": 0.7560884,
+  "tags": {
+    "climbing": "crag",
+    "name": "El Falconet",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698428567,
+  "lat": 41.2299016,
+  "lon": 0.7307550,
+  "tags": {
+    "climbing": "crag",
+    "name": "L' onada",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698571632,
+  "lat": 41.2666734,
+  "lon": 0.7999804,
+  "tags": {
+    "climbing": "crag",
+    "name": "L'Escletxa",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698572851,
+  "lat": 41.2616051,
+  "lon": 0.7916338,
+  "tags": {
+    "climbing": "crag",
+    "name": "Els Codinals",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698612912,
+  "lat": 41.2631765,
+  "lon": 0.8080832,
+  "tags": {
+    "climbing": "crag",
+    "name": "Totxo d'Escaladei",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13698759504,
+  "lat": 41.2696073,
+  "lon": 0.8102521,
+  "tags": {
+    "climbing": "crag",
+    "name": "El Trinquet",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13768934908,
+  "lat": 41.5757484,
+  "lon": 1.8241389,
+  "tags": {
+    "climbing": "crag",
+    "climbing:grade:french:max": "7b+",
+    "climbing:length:max": "35m",
+    "name": "Sector El Beat",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 13904227441,
+  "lat": 41.9627505,
+  "lon": 0.8417728,
+  "tags": {
+    "climbing": "crag",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 14075292959,
+  "lat": 41.1903632,
+  "lon": 1.5747423,
+  "tags": {
+    "leisure": "pitch",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 14123566838,
+  "lat": 41.5841335,
+  "lon": 1.8135914,
+  "tags": {
+    "climbing": "crag",
+    "climbing:routes": "10",
+    "height": "25",
+    "name": "Placa Cangur (La Vinya Nova)",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 14210330414,
+  "lat": 41.5470853,
+  "lon": 2.2500526,
+  "tags": {
+    "climbing": "crag",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "node",
+  "id": 14308377284,
+  "lat": 41.8075417,
+  "lon": 2.2071600,
+  "tags": {
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 35161869,
+  "center": {
+    "lat": 41.3661139,
+    "lon": 2.1473591
+  },
+  "tags": {
+    "area": "yes",
+    "name": "La Foixarda",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 94207972,
+  "center": {
+    "lat": 41.3654313,
+    "lon": 2.1454642
+  },
+  "tags": {
+    "area": "yes",
+    "sport": "climbing",
+    "type": "artificial rock outside"
+  }
+},
+{
+  "type": "way",
+  "id": 182992398,
+  "center": {
+    "lat": 41.2608691,
+    "lon": 0.9432683
+  },
+  "tags": {
+    "name": "Can Marges",
+    "name:ca": "Can Marges",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 187762050,
+  "center": {
+    "lat": 41.6016111,
+    "lon": 1.8269238
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 187762052,
+  "center": {
+    "lat": 41.6001529,
+    "lon": 1.8333006
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 187762055,
+  "center": {
+    "lat": 41.6012412,
+    "lon": 1.8288009
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 187762059,
+  "center": {
+    "lat": 41.5986617,
+    "lon": 1.8342954
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 187762062,
+  "center": {
+    "lat": 41.5962323,
+    "lon": 1.8360956
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 259879514,
+  "center": {
+    "lat": 42.0793132,
+    "lon": 1.2857609
+  },
+  "tags": {
+    "climbing:sport": "yes",
+    "name": "Oliana",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 294870070,
+  "center": {
+    "lat": 41.2605719,
+    "lon": 0.9436648
+  },
+  "tags": {
+    "name": "Can Marges",
+    "name:ca": "Can Marges",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 307104852,
+  "center": {
+    "lat": 41.8739302,
+    "lon": 0.8437112
+  },
+  "tags": {
+    "name": "Paret de l'Os",
+    "name:ca": "Paret de l'Os",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 309871320,
+  "center": {
+    "lat": 41.2449647,
+    "lon": 1.0572136
+  },
+  "tags": {
+    "name": "Cingle de la Cova Llonga",
+    "name:ca": "Cingle de la Cova Llonga",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 364209610,
+  "center": {
+    "lat": 41.9892739,
+    "lon": 2.8048566
+  },
+  "tags": {
+    "leisure": "pitch",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 364209612,
+  "center": {
+    "lat": 41.9895437,
+    "lon": 2.8068905
+  },
+  "tags": {
+    "leisure": "pitch",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 385076537,
+  "center": {
+    "lat": 41.3055031,
+    "lon": 1.7041813
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 393507848,
+  "center": {
+    "lat": 41.5940473,
+    "lon": 1.8373734
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 393507850,
+  "center": {
+    "lat": 41.5934503,
+    "lon": 1.8356372
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 393507853,
+  "center": {
+    "lat": 41.5959451,
+    "lon": 1.8375120
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 394443173,
+  "center": {
+    "lat": 41.2716300,
+    "lon": 1.9203558
+  },
+  "tags": {
+    "name": "Penya Ginesta",
+    "name:ca": "Penya Ginesta",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 401750108,
+  "center": {
+    "lat": 41.3810418,
+    "lon": 1.9168186
+  },
+  "tags": {
+    "name": "Les Casetes de Muntaner (est)",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 401750109,
+  "center": {
+    "lat": 41.3813491,
+    "lon": 1.9154979
+  },
+  "tags": {
+    "name": "Les Casetes de Muntaner (oest)",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 402029814,
+  "center": {
+    "lat": 41.7495607,
+    "lon": 2.2481466
+  },
+  "tags": {
+    "name": "Escola d'Escalada La Soleia de Sant Martí de Centelles",
+    "name:ca": "Escola d'Escalada La Soleia de Sant Martí de Centelles",
+    "natural": "cliff",
+    "sport": "climbing",
+    "website": "http://grimpantenelscingles.blogspot.com/2014/07/ressenyes-de-la-soleia-avui-aprofito.html"
+  }
+},
+{
+  "type": "way",
+  "id": 409250342,
+  "center": {
+    "lat": 41.3498003,
+    "lon": 1.9451574
+  },
+  "tags": {
+    "height": "25",
+    "name": "Penya del Moro",
+    "name:ca": "Penya del Moro",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 409590900,
+  "center": {
+    "lat": 41.2860652,
+    "lon": 1.7022470
+  },
+  "tags": {
+    "alt_name": "Penya del Escofet",
+    "height": "25",
+    "name": "La Facu",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 409593839,
+  "center": {
+    "lat": 41.4341243,
+    "lon": 1.9713056
+  },
+  "tags": {
+    "height": "25",
+    "name": "Pic de l'Àliga",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 414956502,
+  "center": {
+    "lat": 41.5909605,
+    "lon": 1.8346610
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 414956509,
+  "center": {
+    "lat": 41.5906136,
+    "lon": 1.8356624
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 415106041,
+  "center": {
+    "lat": 41.6258282,
+    "lon": 2.0921388
+  },
+  "tags": {
+    "height": "15",
+    "name": "Xaragall del Foió",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 426725721,
+  "center": {
+    "lat": 42.1768546,
+    "lon": 1.2977231
+  },
+  "tags": {
+    "name": "Paret del Grau",
+    "name:ca": "Paret del Grau",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 431777904,
+  "center": {
+    "lat": 42.2437380,
+    "lon": 2.7126561
+  },
+  "tags": {
+    "climbing": "crag",
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 434341455,
+  "center": {
+    "lat": 41.4153369,
+    "lon": 1.8136923
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 434341456,
+  "center": {
+    "lat": 41.4177763,
+    "lon": 1.8144272
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 439788722,
+  "center": {
+    "lat": 41.8056299,
+    "lon": 2.9501843
+  },
+  "tags": {
+    "name": "Sector Solius Central Sud",
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 457957782,
+  "center": {
+    "lat": 41.5381017,
+    "lon": 2.3785768
+  },
+  "tags": {
+    "name": "Banyadores",
+    "natural": "cliff",
+    "sport": "climbing",
+    "wikidata": "Q122411192"
+  }
+},
+{
+  "type": "way",
+  "id": 469371606,
+  "center": {
+    "lat": 42.1765993,
+    "lon": 1.3071314
+  },
+  "tags": {
+    "name": "Coll Piquer",
+    "name:ca": "Coll Piquer",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 491899706,
+  "center": {
+    "lat": 41.0380975,
+    "lon": 0.4837305
+  },
+  "tags": {
+    "name": "Pared de la Por",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 500949051,
+  "center": {
+    "lat": 41.8989553,
+    "lon": 0.8871255
+  },
+  "tags": {
+    "height": "35",
+    "name": "La Selva",
+    "name:ca": "La Selva",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 505918278,
+  "center": {
+    "lat": 41.2693467,
+    "lon": 1.8087148
+  },
+  "tags": {
+    "name": "Penyes de Can Marcer",
+    "name:ca": "Penyes de Can Marcer",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 536457969,
+  "center": {
+    "lat": 41.8734477,
+    "lon": 0.9858330
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 545547544,
+  "center": {
+    "lat": 41.4416926,
+    "lon": 1.5832431
+  },
+  "tags": {
+    "name": "Penyes de Salomó",
+    "name:ca": "Penyes de Salomó",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 598162902,
+  "center": {
+    "lat": 42.1122024,
+    "lon": 1.8267726
+  },
+  "tags": {
+    "height": "28",
+    "name": "Roc de l'Alou",
+    "name:ca": "Roc de l'Alou",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 632418879,
+  "center": {
+    "lat": 41.7355805,
+    "lon": 2.2556393
+  },
+  "tags": {
+    "name": "Sot de la Guillota",
+    "natural": "cliff",
+    "sport": "climbing",
+    "website": "http://grimpantenelscingles.blogspot.com/2016/03/resenyes-del-sot-de-la-guillota.html; http://grimpantenelscingles.blogspot.com/2015/09/sot-de-la-guillota-escola-descalada.html"
+  }
+},
+{
+  "type": "way",
+  "id": 695296068,
+  "center": {
+    "lat": 41.2840782,
+    "lon": 1.7717268
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 704303563,
+  "center": {
+    "lat": 42.1485821,
+    "lon": 1.7664361
+  },
+  "tags": {
+    "height": "15",
+    "name": "El Corral",
+    "name:ca": "El Corral",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 704303565,
+  "center": {
+    "lat": 42.1483321,
+    "lon": 1.7660538
+  },
+  "tags": {
+    "height": "18",
+    "name": "El Corral",
+    "name:ca": "El Corral",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 704393428,
+  "center": {
+    "lat": 42.1277494,
+    "lon": 1.8493467
+  },
+  "tags": {
+    "height": "20",
+    "name": "La Gravera",
+    "name:ca": "La Gravera",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 704396026,
+  "center": {
+    "lat": 42.1124501,
+    "lon": 1.8279680
+  },
+  "tags": {
+    "height": "18",
+    "name": "Can Meu",
+    "name:ca": "Can Meu",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 746636336,
+  "center": {
+    "lat": 42.1771477,
+    "lon": 1.3117263
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 775105720,
+  "center": {
+    "lat": 42.1302216,
+    "lon": 1.7681832
+  },
+  "tags": {
+    "height": "25",
+    "name": "Carboneres",
+    "name:ca": "Carboneres",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 781593314,
+  "center": {
+    "lat": 41.2460973,
+    "lon": 1.6644006
+  },
+  "tags": {
+    "name": "Paret de la Talaia",
+    "name:ca": "Paret de la Talaia",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 781593315,
+  "center": {
+    "lat": 41.2632409,
+    "lon": 1.6520466
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 781593316,
+  "center": {
+    "lat": 41.2606598,
+    "lon": 1.6480761
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 781593317,
+  "center": {
+    "lat": 41.2652340,
+    "lon": 1.6472525
+  },
+  "tags": {
+    "name": "Can Figuera",
+    "name:ca": "Can Figuera",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 781593318,
+  "center": {
+    "lat": 41.2726399,
+    "lon": 1.6475734
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 785409305,
+  "center": {
+    "lat": 42.1502200,
+    "lon": 1.9174961
+  },
+  "tags": {
+    "name": "Sector Roset",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 831356869,
+  "center": {
+    "lat": 41.9312663,
+    "lon": 0.7108070
+  },
+  "tags": {
+    "height": "20",
+    "name": "Jet Lag & Guacamole",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 831367020,
+  "center": {
+    "lat": 41.9286174,
+    "lon": 0.7116049
+  },
+  "tags": {
+    "height": "25",
+    "name": "L'Obsessió de Tibar",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 831367022,
+  "center": {
+    "lat": 41.9265924,
+    "lon": 0.7130501
+  },
+  "tags": {
+    "height": "25",
+    "name": "Bombó Suis",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 831367023,
+  "center": {
+    "lat": 41.9272628,
+    "lon": 0.7125593
+  },
+  "tags": {
+    "height": "25",
+    "name": "Ànima Negra",
+    "name:ca": "Ànima Negra",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 834234471,
+  "center": {
+    "lat": 41.2748253,
+    "lon": 0.7696668
+  },
+  "tags": {
+    "name": "Cingle dels Torroners",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835028226,
+  "center": {
+    "lat": 42.2136390,
+    "lon": 1.8291661
+  },
+  "tags": {
+    "name": "la Foradada",
+    "name:ca": "la Foradada",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835028228,
+  "center": {
+    "lat": 42.2115014,
+    "lon": 1.8414046
+  },
+  "tags": {
+    "name": "Grau de Granotes",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835028229,
+  "center": {
+    "lat": 42.2096986,
+    "lon": 1.8475142
+  },
+  "tags": {
+    "name": "Grau de Sant Climents",
+    "name:ca": "Grau de Sant Climents",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835033183,
+  "center": {
+    "lat": 42.1888899,
+    "lon": 1.8416729
+  },
+  "tags": {
+    "name": "Cingles de Vallcebre",
+    "name:ca": "Cingles de Vallcebre",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835033184,
+  "center": {
+    "lat": 42.1846192,
+    "lon": 1.8257166
+  },
+  "tags": {
+    "name": "Grau de la Mola",
+    "name:ca": "Grau de la Mola",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835476490,
+  "center": {
+    "lat": 41.5770972,
+    "lon": 1.8167742
+  },
+  "tags": {
+    "height": "25",
+    "name": "The Mama's and The Papa`s",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 835476491,
+  "center": {
+    "lat": 41.5775256,
+    "lon": 1.8172396
+  },
+  "tags": {
+    "height": "22",
+    "name": "The Mama's and The Papa`s",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 914442924,
+  "center": {
+    "lat": 41.8673208,
+    "lon": 0.9562816
+  },
+  "tags": {
+    "climbing:bolts": "yes",
+    "climbing:grade:french:max": "6b+",
+    "climbing:grade:french:min": "4b",
+    "climbing:length:max": "20",
+    "climbing:length:min": "10",
+    "climbing:orientation": "S",
+    "climbing:quality": "solid",
+    "climbing:rock": "limestone",
+    "climbing:sport": "18",
+    "indoor": "no",
+    "natural": "cliff",
+    "source": "survey;local knowledge",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 922969314,
+  "center": {
+    "lat": 42.0212415,
+    "lon": 0.9799898
+  },
+  "tags": {
+    "climbing": "crag",
+    "climbing:bolted": "yes",
+    "climbing:grade:french:max": "7b",
+    "climbing:grade:french:min": "5a",
+    "climbing:length:max": "33",
+    "climbing:length:min": "12",
+    "climbing:orientation": "s",
+    "climbing:quality": "solid",
+    "climbing:rock": "limestone",
+    "climbing:sport": "73",
+    "natural": "cliff",
+    "source": "survey",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 925927811,
+  "center": {
+    "lat": 42.0953584,
+    "lon": 1.2269890
+  },
+  "tags": {
+    "climbing": "crag",
+    "climbing:sport": "yes",
+    "natural": "ridge",
+    "source": "survey",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435257,
+  "center": {
+    "lat": 41.9000181,
+    "lon": 0.8882055
+  },
+  "tags": {
+    "height": "22",
+    "name": "Sector Dexter",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435258,
+  "center": {
+    "lat": 41.8995454,
+    "lon": 0.8879943
+  },
+  "tags": {
+    "height": "20",
+    "name": "Sector Fashion",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435259,
+  "center": {
+    "lat": 41.9008277,
+    "lon": 0.8888841
+  },
+  "tags": {
+    "height": "25",
+    "name": "Capricho de Vicho",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435261,
+  "center": {
+    "lat": 41.9027291,
+    "lon": 0.8897609
+  },
+  "tags": {
+    "height": "32",
+    "name": "Cingle de la Llum",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435262,
+  "center": {
+    "lat": 41.9048124,
+    "lon": 0.8902306
+  },
+  "tags": {
+    "height": "8",
+    "name": "El Perrancot",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435263,
+  "center": {
+    "lat": 41.9042792,
+    "lon": 0.8905914
+  },
+  "tags": {
+    "height": "40",
+    "name": "Paret dels Heretges",
+    "name:ca": "Paret dels Heretges",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435265,
+  "center": {
+    "lat": 41.9052035,
+    "lon": 0.8912997
+  },
+  "tags": {
+    "height": "90",
+    "name": "El Puro",
+    "name:ca": "El Puro",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435266,
+  "center": {
+    "lat": 41.9046460,
+    "lon": 0.8908258
+  },
+  "tags": {
+    "height": "40",
+    "name": "Paret dels Heretges",
+    "name:ca": "Paret dels Heretges",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435267,
+  "center": {
+    "lat": 41.9040137,
+    "lon": 0.8903774
+  },
+  "tags": {
+    "height": "35",
+    "name": "La Pera",
+    "name:ca": "La Pera",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435269,
+  "center": {
+    "lat": 41.9040397,
+    "lon": 0.8902432
+  },
+  "tags": {
+    "height": "35",
+    "name": "La Pera",
+    "name:ca": "La Pera",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435272,
+  "center": {
+    "lat": 41.9030835,
+    "lon": 0.8887668
+  },
+  "tags": {
+    "height": "25",
+    "name": "Marcant Estil",
+    "name:ca": "Marcant Estil",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435273,
+  "center": {
+    "lat": 41.9010363,
+    "lon": 0.8874216
+  },
+  "tags": {
+    "height": "10",
+    "name": "San Juan",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435274,
+  "center": {
+    "lat": 41.9007019,
+    "lon": 0.8878260
+  },
+  "tags": {
+    "height": "30",
+    "name": "la Font",
+    "name:ca": "la Font",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435275,
+  "center": {
+    "lat": 41.9003296,
+    "lon": 0.8873766
+  },
+  "tags": {
+    "height": "30",
+    "name": "La Blanca",
+    "name:ca": "La Blanca",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435276,
+  "center": {
+    "lat": 41.8998395,
+    "lon": 0.8867383
+  },
+  "tags": {
+    "height": "25",
+    "name": "Sector Emotion",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 965435277,
+  "center": {
+    "lat": 41.8996178,
+    "lon": 0.8856761
+  },
+  "tags": {
+    "height": "30",
+    "name": "Kuestelon la France",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 978762158,
+  "center": {
+    "lat": 41.0366336,
+    "lon": 0.4872013
+  },
+  "tags": {
+    "name": "Puntal de l'Ós",
+    "name:ca": "Puntal de l'Ós",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1044163293,
+  "center": {
+    "lat": 41.2980705,
+    "lon": 0.7705088
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1044163296,
+  "center": {
+    "lat": 41.2975929,
+    "lon": 0.7775040
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1175927718,
+  "center": {
+    "lat": 41.2399649,
+    "lon": 1.0623303
+  },
+  "tags": {
+    "name": "Can Pistola",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1222017222,
+  "center": {
+    "lat": 41.8044168,
+    "lon": 2.9491129
+  },
+  "tags": {
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1222745310,
+  "center": {
+    "lat": 41.8053900,
+    "lon": 2.9508644
+  },
+  "tags": {
+    "name": "Agulla del pi",
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1222745311,
+  "center": {
+    "lat": 41.8051805,
+    "lon": 2.9505260
+  },
+  "tags": {
+    "name": "Agulla de dalt",
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1222745312,
+  "center": {
+    "lat": 41.8049290,
+    "lon": 2.9503781
+  },
+  "tags": {
+    "name": "Aguolla",
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1222745313,
+  "center": {
+    "lat": 41.8047812,
+    "lon": 2.9502173
+  },
+  "tags": {
+    "name": "Agulla de baix",
+    "natural": "bare_rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1224837581,
+  "center": {
+    "lat": 41.2400542,
+    "lon": 0.9349420
+  },
+  "tags": {
+    "name": "Duc",
+    "name:ca": "Duc",
+    "natural": "rock",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1225394196,
+  "center": {
+    "lat": 41.2642471,
+    "lon": 0.9388531
+  },
+  "tags": {
+    "name": "Espero Primavera",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1278101641,
+  "center": {
+    "lat": 41.0418013,
+    "lon": 0.4909735
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1278101643,
+  "center": {
+    "lat": 41.0383404,
+    "lon": 0.4918443
+  },
+  "tags": {
+    "name": "Pared del Diedres",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1279567386,
+  "center": {
+    "lat": 41.0406433,
+    "lon": 0.4899250
+  },
+  "tags": {
+    "name": "Fantasia",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1279567387,
+  "center": {
+    "lat": 41.0398881,
+    "lon": 0.4891652
+  },
+  "tags": {
+    "name": "Mirador",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1279567959,
+  "center": {
+    "lat": 41.0392061,
+    "lon": 0.4918361
+  },
+  "tags": {
+    "name": "Punta Gaspar",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1279567960,
+  "center": {
+    "lat": 41.0394569,
+    "lon": 0.4918070
+  },
+  "tags": {
+    "name": "Al-la",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1279568565,
+  "center": {
+    "lat": 41.0399245,
+    "lon": 0.4918876
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1279568566,
+  "center": {
+    "lat": 41.0403452,
+    "lon": 0.4916680
+  },
+  "tags": {
+    "name": "Parvulari estrep",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1290597872,
+  "center": {
+    "lat": 41.2949937,
+    "lon": 0.7747042
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1290597879,
+  "center": {
+    "lat": 41.2966004,
+    "lon": 0.7723444
+  },
+  "tags": {
+    "name": "Can Pesafigues",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1290597880,
+  "center": {
+    "lat": 41.2960632,
+    "lon": 0.7728272
+  },
+  "tags": {
+    "name": "Can Verdures",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1290597881,
+  "center": {
+    "lat": 41.2955513,
+    "lon": 0.7734933
+  },
+  "tags": {
+    "name": "Cova Soleiada",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1292564281,
+  "center": {
+    "lat": 41.2959620,
+    "lon": 0.7820004
+  },
+  "tags": {
+    "name": "Can Gueli",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1294657854,
+  "center": {
+    "lat": 41.2424773,
+    "lon": 0.9353134
+  },
+  "tags": {
+    "name": "Can Simiro",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1331387342,
+  "center": {
+    "lat": 42.2482644,
+    "lon": 2.0416259
+  },
+  "tags": {
+    "name": "Totxo del Refugi Esquerra",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1331387555,
+  "center": {
+    "lat": 42.2486884,
+    "lon": 2.0419799
+  },
+  "tags": {
+    "name": "Totxo del Refugi Dreta",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1434413204,
+  "center": {
+    "lat": 42.4943985,
+    "lon": 1.9845209
+  },
+  "tags": {
+    "climbing": "crag",
+    "climbing:boulder": "yes",
+    "name": "Chapeau"
+  }
+},
+{
+  "type": "way",
+  "id": 1434413206,
+  "center": {
+    "lat": 42.4934008,
+    "lon": 1.9784578
+  },
+  "tags": {
+    "climbing": "crag",
+    "climbing:boulder": "yes",
+    "name": "Arche"
+  }
+},
+{
+  "type": "way",
+  "id": 1563516961,
+  "center": {
+    "lat": 41.6063866,
+    "lon": 2.2438852
+  },
+  "tags": {
+    "leisure": "pitch",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1569467921,
+  "center": {
+    "lat": 41.6617297,
+    "lon": 2.1412959
+  },
+  "tags": {
+    "name": "Paret del Morro del Porc",
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "way",
+  "id": 1569467922,
+  "center": {
+    "lat": 41.6621758,
+    "lon": 2.1420972
+  },
+  "tags": {
+    "natural": "cliff",
+    "sport": "climbing"
+  }
+},
+{
+  "type": "relation",
+  "id": 18940644,
+  "center": {
+    "lat": 41.2621592,
+    "lon": 0.9415437
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 286211957,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 311444050,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 311444049,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 182973060,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1318750709,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1318750708,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 182990676,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1225394196,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1225394195,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1005819163,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 303374062,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1005819166,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 182992398,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1005819164,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1005886925,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 500071934,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 570042238,
+      "role": ""
+    },
+    {
+      "type": "node",
+      "ref": 1933364128,
+      "role": ""
+    },
+    {
+      "type": "node",
+      "ref": 3170888736,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "area",
+    "name": "Siurana",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19096704,
+  "center": {
+    "lat": 41.0405176,
+    "lon": 0.4901290
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 1279567387,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1279567386,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1278101641,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1279568566,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1279568565,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1279567960,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1279567959,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1278101643,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "site": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19096705,
+  "center": {
+    "lat": 41.0370805,
+    "lon": 0.4840809
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 491899705,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1280096709,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 491899706,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1280096710,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 978762158,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19513585,
+  "center": {
+    "lat": 41.5889420,
+    "lon": 1.8279258
+  },
+  "members": [
+    {
+      "type": "node",
+      "ref": 1882825784,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 643274837,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "name": "Magdalena Inferior",
+    "site": "climbing",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19513586,
+  "center": {
+    "lat": 41.5895352,
+    "lon": 1.8266124
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 643274838,
+      "role": ""
+    },
+    {
+      "type": "node",
+      "ref": 1882825789,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "name": "Magdalena Superior",
+    "site": "climbing",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19513587,
+  "center": {
+    "lat": 41.5900872,
+    "lon": 1.8264065
+  },
+  "members": [
+    {
+      "type": "node",
+      "ref": 1882825729,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 643274833,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "name": "Gorro Frigi",
+    "site": "climbing",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19513594,
+  "center": {
+    "lat": 41.6061251,
+    "lon": 1.7805712
+  },
+  "members": [
+    {
+      "type": "node",
+      "ref": 1928741242,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 220877175,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "name": "Portella Petita",
+    "site": "climbing",
+    "sport": "climbing",
+    "type": "site"
+  }
+},
+{
+  "type": "relation",
+  "id": 19658370,
+  "center": {
+    "lat": 42.4945646,
+    "lon": 1.9774841
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 1434413211,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413217,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413210,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413218,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413207,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413214,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413212,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413220,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413204,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413208,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413215,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413203,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413219,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413213,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413209,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413205,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413216,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1434413206,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 1433888773,
+      "role": "outer"
+    }
+  ],
+  "tags": {
+    "climbing": "crag",
+    "climbing:boulder": "yes",
+    "fee": "no",
+    "name": "Chaos de Targasonne",
+    "name:ca": "Caos de Targasona",
+    "natural": "blockfield",
+    "sport": "climbing",
+    "tourism": "attraction",
+    "type": "multipolygon",
+    "url": "https://topotarga.fr/",
+    "wikimedia_commons": "Category:Chaos de Targasonne"
+  }
+}
+
+  ]
+}
