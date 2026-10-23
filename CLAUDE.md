@@ -27,6 +27,7 @@ Pla complet: document «CEM — transferència de coneixement des d'Ocata Vent»
 - Les parets aprovades no porten dades personals; en esborrar el compte s'esborren les propostes.
 - Firebase: projecte `cem-meteo`, Firestore `eur3`.
 - L'escalada es planifica per dies i per tot Catalunya: nota de diversos dies = dies bons (23-10-2026).
+- Interfície (23-10-2026): fitxa de zona a pantalla completa (enrere del mòbil torna al mapa) amb els seus dies (matí | tarda); en franja «Dia» el marcador es parteix matí | tarda; les explicacions fixes van a botons (i) (`infoContent`); atribució com a text petit fix (`.attr`).
 - Sense temps de viatge (decisió de l'Oriol): coordenades amb «Copia» i «Obre al mapa» (excepció a la norma del navegador: `geo:` a Android i Apple Maps a l'iPhone obren l'app de mapes del mòbil; a l'ordinador només «Copia»).
 
 ## Pendent

@@ -307,8 +307,11 @@ const map = new maplibregl.Map({
     ]
   }
 });
-map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:"Previsió: Open-Meteo"}), "bottom-right");
+// atribució: text fix petit (.attr) i completa a «Fonts i avís»; sense el botó (i) flotant de MapLibre
 map.addControl(new maplibregl.ScaleControl({unit:"metric"}), "bottom-left");
+// noms de zona només de prop: de lluny tapaven els topònims del mapa
+const zlo = () => document.body.classList.toggle("zlo", map.getZoom() < 10);
+map.on("zoomend", zlo); zlo();
 map.on("moveend", () => { store.set("cem_view", {c: map.getCenter().toArray(), z: map.getZoom()}); if(!drawing) renderDays(false); });
 
 function applyBase(){
@@ -386,8 +389,11 @@ function zonesGeoJSON(){
   return {type:"FeatureCollection", features: ZONES.map(z => {
     const v = frSlot(zoneEval(z), dayKey), mid = v.rows[Math.floor(v.rows.length / 2)];
     const P = selDays.length > 1 ? periodEval(z) : null;
+    // «Dia» amb un sol dia: rodona partida matí | tarda (la mitjana amagava una franja dolenta)
+    const sp = !P && slot === "dia" ? {a: frSlot(zoneEval(z), dayKey, "am"), p: frSlot(zoneEval(z), dayKey, "pm")} : null;
+    const spl = sp && sp.a.sc != null && sp.p.sc != null ? {la: sp.a.lv, lp: sp.p.lv, sa: Math.round(sp.a.sc), spm: Math.round(sp.p.sc)} : {};
     return {type:"Feature", geometry:{type:"Point", coordinates:[z.lon, z.lat]},
-      properties:{id:z.id, rf: window.CEM_R ? CEM_R.flags(z).ic : "", lv: P ? P.lv : v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), lbl: P ? P.good + "/" + P.n : "",
+      properties:{id:z.id, ...spl, rf: window.CEM_R ? CEM_R.flags(z).ic : "", lv: P ? P.lv : v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), lbl: P ? P.good + "/" + P.n : "",
         why: P ? `${P.good} de ${P.n} dies bons` : v.why, wd:mid ? mid.wd : -1, wkmh:mid ? Math.round(mid.wkmh) : -1}};
   })};
 }
@@ -398,7 +404,9 @@ function renderMarkers(){
 function zoneMarkerHTML(p){
   const z = ZONES.find(z => z.id === p.id), lvl = p.lv;
   const wind = ly.wind && p.wd >= 0 ? `<svg class="w" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(${(p.wd + 180) % 360}deg)"><path d="M12 2l7 9h-4.5v11h-5V11H5z" fill="currentColor" stroke="var(--surface)" stroke-width="1.2" stroke-linejoin="round"/></svg>` : "";
-  return `<span class="b lv-${lvl}${p.lbl ? " frac" : ""}">${p.lbl || (p.sc < 0 ? "–" : p.sc)}${LV_IC[lvl]}</span>${p.rf ? `<span class="rf" aria-hidden="true">${p.rf}</span>` : ""}${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
+  const inner = p.la ? `<span>${p.sa}</span><span>${p.spm}</span>` : (p.lbl || (p.sc < 0 ? "–" : p.sc));
+  const st = p.la ? ` style="--a:var(--${p.la});--p:var(--${p.lp})"` : "";
+  return `<span class="b lv-${lvl}${p.la ? " split" : p.lbl ? " frac" : ""}"${st}>${inner}${LV_IC[lvl]}</span>${p.rf ? `<span class="rf" aria-hidden="true">${p.rf}</span>` : ""}${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
 }
 // Rodona d'un grup: anell amb el % de zones de cada color i el nombre de zones al centre
 function donutHTML(p){
@@ -441,7 +449,7 @@ function updateMarkers(){
       const el = m.getElement();
       if(el.dataset.v !== String(mkVer)){ el.dataset.v = mkVer; el.innerHTML = zoneMarkerHTML(p);
         const z = ZONES.find(z => z.id === id);
-        el.setAttribute("aria-label", `${z.name}: ${LV_TXT[p.lv]}${p.lbl ? "" : p.sc >= 0 ? ", " + p.sc + " sobre 10" : ""}. ${p.why}`); }
+        el.setAttribute("aria-label", `${z.name}: ${LV_TXT[p.lv]}${p.la ? `, matí ${p.sa} i tarda ${p.spm} sobre 10` : p.lbl ? "" : p.sc >= 0 ? ", " + p.sc + " sobre 10" : ""}. ${p.why}`); }
       next[id] = m;
     }
   });
@@ -486,8 +494,10 @@ function renderDays(scroll = true){
     return `<button type="button" data-day="${k}" aria-pressed="${on}" class="${k === dayKey && selDays.length > 1 ? "foc" : ""}${isFar(k) ? " far" : ""}" aria-label="${aria}"><b>${dayLbl(k)}</b><small>${d.getDate()} ${MONTHS[d.getMonth()]}</small>` +
       `<span class="dk" aria-hidden="true">${cell(am)}${cell(pm)}</span></button>`;
   }).join("");
-  $("dayHint").textContent = zs.length ? `Mitjana de ${zs.length === 1 ? "la zona" : "les " + zs.length + " zones"} a la vista · matí | tarda` : "Cap zona a la vista: mou o allunya el mapa";
-  $("calBtn").querySelector("span").textContent = selDays.length === 1 ? "1 dia" : selDays.length + " dies";
+  // l'explicació fixa («mitjana de les zones a la vista») és ara al (i) del mapa; aquí només l'avís sense zones
+  $("dayHint").hidden = !!zs.length; $("dayHint").textContent = "Cap zona a la vista: mou o allunya el mapa";
+  const cnt = $("calBtn").querySelector(".cnt"); cnt.hidden = selDays.length < 2; cnt.textContent = selDays.length;
+  $("calBtn").setAttribute("aria-label", "Tria els dies de la sortida (" + (selDays.length === 1 ? "1 dia" : selDays.length + " dies") + ")");
   document.querySelectorAll("#slotSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.slot === slot)));
   if(scroll){ const sel = box.querySelector(".foc") || box.querySelector('[aria-pressed="true"]'); if(sel) sel.scrollIntoView({inline:"nearest", block:"nearest"}); }
   document.documentElement.style.setProperty("--daybar-h", $("daybar").offsetHeight + 16 + "px");
@@ -500,8 +510,18 @@ $("slotSeg").addEventListener("click", e => { const b = e.target.closest("button
 $("modSeg").addEventListener("click", e => { const b = e.target.closest("button[data-mod]"); if(!b) return; mod = b.dataset.mod; store.set("cem_mod", mod); renderPanels(); renderAll(); });
 
 /* ---------- FITXA DE LA ZONA ---------- */
-function openZone(id){ selZone = id; $("calSheet").hidden = true; $("rankSheet").hidden = true; $("sheet").hidden = false; renderSheet(); const z = ZONES.find(z => z.id === id); if(z && map.getZoom() < 9) map.easeTo({center:[z.lon, z.lat], zoom: 10}); }
-$("sheetClose").addEventListener("click", () => { selZone = null; $("sheet").hidden = true; });
+function openZone(id){
+  selZone = id; $("calSheet").hidden = true; $("rankSheet").hidden = true; $("layerPanel").hidden = true;
+  if(!(history.state && history.state.cemSheet)) history.pushState({cemSheet:1}, "");
+  $("sheet").hidden = false; $("zBody").scrollTop = 0; renderSheet();
+  const z = ZONES.find(z => z.id === id); if(z && map.getZoom() < 9) map.easeTo({center:[z.lon, z.lat], zoom: 10});
+}
+function closeZone(){ selZone = null; $("sheet").hidden = true; $("infoSheet").hidden = true; }
+$("sheetClose").addEventListener("click", () => { if(history.state && history.state.cemSheet) history.back(); else closeZone(); });
+addEventListener("popstate", () => { if(!$("sheet").hidden) closeZone(); });
+const INF = k => `<button class="inf" type="button" data-info="${k}" aria-label="Més informació"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg></button>`;
+const MOD_IC = {esportiva: document.querySelector('#modSeg [data-mod="esportiva"] svg').outerHTML.replace(/width="22" height="22"/, 'width="16" height="16"'),
+  classica: document.querySelector('#modSeg [data-mod="classica"] svg').outerHTML.replace(/width="22" height="22"/, 'width="16" height="16"')};
 const pill = (lv, txt) => `<span class="pill lv-${lv}">${LV_IC[lv].replace("<svg", '<svg width="13" height="13"')}${esc(txt)}</span>`;
 function feelLv(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 || f > hi + 6 ? "no" : f < lo || f > hi ? "mid" : "ok"; }
 function feelTxt(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 ? "Molt fred" : f < lo ? "Fresc" : f > hi + 6 ? "Molta calor" : f > hi ? "Calor" : "Agradable"; }
@@ -512,7 +532,17 @@ function renderSheet(){
   const z = ZONES.find(z => z.id === selZone), ev = zoneEval(z), o = ev.o;
   const ws = wallsOf(z);
   $("zName").textContent = z.name;
-  $("zMeta").textContent = `${ROCKS[z.rock].name} · ${z.alt} m · ${z.mods.map(m => m === "classica" ? "clàssica" : "esportiva").join(", ")}${z.src === "provisional" ? " · dades de prova" : ""}`;
+  // subtítol en una línia: roca · altitud · icones de modalitat; «dades de prova» com a etiqueta
+  $("zMeta").innerHTML = `<span>${ROCKS[z.rock].name} · ${z.alt} m</span>` +
+    `<span title="${z.mods.map(m => m === "classica" ? "Clàssica" : "Esportiva").join(" i ")}">${z.mods.map(m => MOD_IC[m]).join(" ")}</span>` +
+    (z.src === "provisional" ? `<span class="tag">Dades de prova${INF("prova")}</span>` : "");
+  // dies dins la fitxa: notes d'aquesta zona (matí | tarda); substitueix la barra de dies, que queda tapada
+  const zc = v => `<i class="lv-${v.lv}">${v.sc == null ? "–" : Math.round(v.sc)}</i>`;
+  $("zDays").innerHTML = daysAvail().map(k => { const d = new Date(k + "T12:00:00"), a = zoneSlot(ev, k, "am"), p = zoneSlot(ev, k, "pm");
+    return `<button type="button" data-zday="${k}" aria-pressed="${k === dayKey}" class="${isFar(k) ? "far" : ""}${selDays.includes(k) && k !== dayKey ? " insel" : ""}" ` +
+      `aria-label="${dayLbl(k, true)}: matí ${a.sc == null ? "sense dades" : Math.round(a.sc)}, tarda ${p.sc == null ? "sense dades" : Math.round(p.sc)}${isFar(k) ? ", previsió orientativa" : ""}">` +
+      `<b>${dayLbl(k)} ${d.getDate()}</b><span class="dk" aria-hidden="true">${zc(a)}${zc(p)}</span></button>`; }).join("");
+  { const b = $("zDays").querySelector('[aria-pressed="true"]'); if(b) b.scrollIntoView({inline:"nearest", block:"nearest"}); }
   const V = {am: zoneSlot(ev, dayKey, "am"), pm: zoneSlot(ev, dayKey, "pm")};
   const cur = slot === "dia" ? frSlot(ev, dayKey, "dia") : V[slot], rows = cur.rows.length ? cur.rows : V.am.rows.concat(V.pm.rows);
   const mid = rows[Math.floor(rows.length / 2)];
@@ -525,39 +555,39 @@ function renderSheet(){
   if(selDays.length > 1){
     const P = periodEval(z);
     h += `<div class="psum"><div class="ph"><span class="vt tx-${P.lv}">${LV_IC[P.lv].replace("<svg", '<svg width="18" height="18"')}<b>${P.good} de ${P.n} dies bons</b></span>` +
-      `<span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()}${P.avg != null ? " · mitjana " + Math.round(P.avg) : ""}</span></div>` +
-      `<div class="pdays">${P.per.map(x => `<button type="button" class="pd ${x.v.lv}${isFar(x.k) ? " far" : ""}" data-pday="${x.k}" aria-pressed="${x.k === dayKey}">` +
-        `<span>${dayLbl(x.k)} ${new Date(x.k + "T12:00:00").getDate()}</span><b class="num">${x.v.sc == null ? "–" : Math.round(x.v.sc)}</b><small>${esc(x.v.why)}</small></button>`).join("")}</div></div>` +
-      `<p class="note">Detall de ${esc(dayLbl(dayKey, true))}:</p>`;
+      `<span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()}${P.avg != null ? " · mitjana " + Math.round(P.avg) : ""}</span></div></div>`;
   }
-  h += `<div class="verd">${vb("am")}${vb("pm")}</div>`;
-  if(selDays.some(isFar)) h += `<p class="note">A partir del 6è dia la previsió és orientativa: torna-la a mirar més a prop de la sortida.</p>`;
+  h += `<div class="verd"><div class="secth"><span class="lbl">${esc(dayLbl(dayKey, true))}</span>${INF("nota")}</div>${vb("am")}${vb("pm")}</div>`;
+  if(isFar(dayKey)) h += `<p class="note">Previsió orientativa (6è dia o més): torna-la a mirar més a prop de la sortida.</p>`;
   if(z.mods.indexOf(mod) < 0) h += `<p class="note">Aquesta zona no té ${mod === "classica" ? "vies clàssiques" : "escalada esportiva"} al catàleg.</p>`;
-  // confort
-  if(mid){
-    const f = mid.feel, lv = feelLv(f);
-    h += `<div class="conf"><div><span class="lbl">Sensació ${pad(mid.loc.h)} h</span><div class="big num tx-${lv}">${Math.round(f)}<small>°C</small></div></div>` +
-      `<div>${pill(lv, feelTxt(f))}<div class="air">Aire ${Math.round(mid.T)} °C${mid.sunny ? " · al sol" : mid.lit ? " · núvol" : mid.lit === false ? " · a l'ombra" : ""}</div></div>` +
-      `<div class="seg" role="group" aria-label="Confort per a" id="roleSeg"><button type="button" data-role="climb" aria-pressed="${role === "climb"}">Escalant</button>` +
-      `<button type="button" data-role="belay" aria-pressed="${role === "belay"}">Assegurant</button></div></div>`;
-  }
-  // dades clau
+  // dades a una hora concreta (la mateixa per a la sensació i per a les dades, perquè lliguin)
   const allRows = (cur.seg ? cur.seg.rows : ev.zoneRows);
   const nowI = allRows.findIndex(r => r.t >= Date.now()); const ref = mid || allRows[Math.max(0, nowI)];
   const rain72 = (() => { const t1 = ref ? ref.t : Date.now(); let s = 0; o.t.forEach((t, i) => { if(t <= t1 && t > t1 - 72 * 3600e3) s += o.P[i] || 0; }); return s; })();
   const st = ref ? (ref.W > 0.3 ? "molla" : ref.W > 0.05 ? "humida" : "seca") : "–";
-  const since = ref && ref.lastWet && ref.W <= 0.3 ? " · seca fa " + Math.max(1, Math.round((ref.t - ref.lastWet) / 3600e3)) + " h" : "";
+  const since = ref && ref.lastWet && ref.W <= 0.3 ? "seca fa " + Math.max(1, Math.round((ref.t - ref.lastWet) / 3600e3)) + " h · " : "";
   const sun = o.sun[dayKey];
   const tf = ms => { const d = new Date(ms); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
-  h += `<div class="facts">` +
-    `<span>Roca <b>${st}</b>${since}</span><span>Pluja 72 h <b>${rain72.toFixed(1).replace(".", ",")} mm</b></span>` +
-    (ref ? `<span>Vent <b>${Math.round(ref.wkmh)}</b> km/h ${cardOf(ref.wd)} · ratxa <b>${Math.round(ref.gust)}</b></span><span>Humitat <b>${Math.round(ref.RH)} %</b></span>` : "") +
-    (sun ? `<span>Llum <b>${tf(sun.rise)}–${tf(sun.set)}</b></span>` : "") + `</div>`;
-  // coordenades de la zona i botó per obrir-les a l'app de mapes del mòbil (no al navegador)
+  if(ref){
+    const f = ref.feel, lv = feelLv(f);
+    h += `<div class="now"><div class="nh"><span class="lbl">A les ${ref.loc.h} h</span>` +
+      `<div class="seg xs" role="group" aria-label="Sensació per a" id="roleSeg"><button type="button" data-role="climb" aria-pressed="${role === "climb"}">Escalant</button>` +
+      `<button type="button" data-role="belay" aria-pressed="${role === "belay"}">Assegurant</button></div>${INF("confort")}</div>` +
+      `<div class="nconf"><span class="big tx-${lv}">${Math.round(f)}<small>°C</small></span>${pill(lv, feelTxt(f))}` +
+      `<span class="air">sensació · aire ${Math.round(ref.T)} °C${ref.sunny ? " al sol" : ref.lit ? ", núvol" : ref.lit === false ? " a l'ombra" : ""}</span></div>` +
+      `<div class="fgrid">` +
+      `<div><span class="fl">Roca${INF("roca")}</span><b class="tx-${st === "seca" ? "ok" : st === "humida" ? "mid" : "no"}">${st[0].toUpperCase() + st.slice(1)}</b><small>${since}${rain72.toFixed(1).replace(".", ",")} mm en 72 h</small></div>` +
+      `<div><span class="fl">Vent</span><b>${Math.round(ref.wkmh)} km/h ${cardOf(ref.wd)}</b><small>ratxa ${Math.round(ref.gust)} km/h</small></div>` +
+      `<div><span class="fl">Humitat</span><b>${Math.round(ref.RH)} %</b><small>punt de rosada ${Math.round(ref.Td)} °C</small></div>` +
+      (sun ? `<div><span class="fl">Llum</span><b>${tf(sun.rise)}–${tf(sun.set)}</b><small>${(Math.round((sun.set - sun.rise) / 3600e3 * 10) / 10).toString().replace(".", ",")} h de dia</small></div>` : "") +
+      `</div></div>`;
+  }
+  // coordenades: una sola fila, dada secundària
   const ll = `${z.lat.toFixed(5)}, ${z.lon.toFixed(5)}`, isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const mapHref = isIOS ? `https://maps.apple.com/?ll=${z.lat},${z.lon}&q=${encodeURIComponent(z.name)}` : /Android/.test(navigator.userAgent) ? `geo:${z.lat},${z.lon}?q=${z.lat},${z.lon}(${encodeURIComponent(z.name)})` : "";
-  h += `<div class="zloc"><span>📍 <b class="num">${ll}</b>${z.src === "provisional" ? ' <span class="muted">(aproximades)</span>' : ""}</span>` +
-    `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (mapHref ? `<a class="btn sm pri" href="${mapHref}">Obre al mapa</a>` : "") + `</div>`;
+  h += `<div class="zloc"><span>📍 ${ll}${z.src === "provisional" ? " · aproximades" : ""}</span>` +
+    `<button class="ib" type="button" data-copy="${ll}" aria-label="Copia les coordenades"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg></button>` +
+    (mapHref ? `<a class="btn sm pri" href="${mapHref}">Com arribar</a>` : "") + `</div>`;
   if(window.CEM_R) h += CEM_R.sheetHTML(z);
   // parets
   h += `<div class="walls">`;
@@ -590,6 +620,8 @@ function renderSheet(){
     `</tbody></table><p class="note">Vent: mitjà / ratxa en km/h. ${cur.seg ? "Paret: " + esc(cur.seg.w.name) + "." : "Tota la zona."}</p></details>`;
   $("zBody").innerHTML = h;
 }
+$("zDays").addEventListener("click", e => { const b = e.target.closest("button[data-zday]"); if(!b) return; const k = b.dataset.zday;
+  if(selDays.includes(k)){ dayKey = k; renderAll(); } else setDays(selDays.length > 1 ? selDays.concat(k) : [k], k); });
 $("zBody").addEventListener("click", e => {
   const pd = e.target.closest("button[data-pday]"); if(pd){ dayKey = pd.dataset.pday; renderAll(); return; }
   const cp = e.target.closest("button[data-copy]");
@@ -614,7 +646,7 @@ function setRole(r){ role = r; store.set("cem_role", role); renderAll(); renderP
 function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); }
 
 /* ---------- CALENDARI: dies de la sortida ---------- */
-function openSheet(id){ ["calSheet", "rankSheet"].forEach(x => $(x).hidden = x !== id); if(id === "calSheet") renderCal(); else renderRank(); }
+function openSheet(id){ ["calSheet", "rankSheet", "infoSheet"].forEach(x => $(x).hidden = x !== id); if(id === "calSheet") renderCal(); else renderRank(); }
 document.addEventListener("click", e => { const c = e.target.closest && e.target.closest("[data-shclose]"); if(c) c.closest(".msheet").hidden = true; });
 $("calBtn").addEventListener("click", () => openSheet("calSheet"));
 $("rankBtn").addEventListener("click", () => openSheet("rankSheet"));
@@ -676,6 +708,52 @@ $("rankBody").addEventListener("click", e => {
   const s = e.target.closest("button[data-rs]"); if(s){ rankScope = s.dataset.rs; store.set("cem_rank_scope", rankScope); renderRank(); return; }
   const r = e.target.closest("button[data-zone]"); if(r){ $("rankSheet").hidden = true; openZone(r.dataset.zone); }
 });
+
+/* ---------- INFORMACIÓ (i) ---------- */
+// Textos dels botons (i): expliquen què vol dir cada dada sense ocupar lloc fix a la pantalla
+function infoContent(k){
+  const C = crit[mod];
+  const ic = (lv, t) => `<span class="ilg lv-${lv}">${t || LV_IC[lv]}</span>`;
+  const R = Object.values(ROCKS).slice().sort((a, b) => a.dry - b.dry).map(r => r.name.toLowerCase());
+  return ({
+    mapa: ["Com es llegeix el mapa", `
+      <p>Cada rodona és una zona amb la nota de 0 a 10 i una icona, per no dependre només del color:</p>
+      <ul><li>${ic("ok")} <b>Recomanat</b> (7 o més)</li><li>${ic("mid")} <b>Amb limitacions</b> (4 a 6)</li><li>${ic("no")} <b>No recomanat</b> (menys de 4, o pluja, tempesta o roca molla)</li><li>${ic("na")} <b>Sense dades</b> (fora d'hores de llum)</li></ul>
+      <p>Amb la franja <b>Dia</b>, la rodona es parteix: <b>esquerra = matí</b>, <b>dreta = tarda</b>. La icona del cantó és el veredicte del dia.</p>
+      <p>Amb diversos dies triats, la rodona diu quants són bons (p. ex. 2/3).</p>
+      <p><b>Fletxa negra:</b> cap on bufa el vent. El número del costat del nom és el vent mitjà en km/h. Els noms surten quan t'hi acostes.</p>
+      <p><b>Rodones amb anell:</b> diverses zones juntes; l'anell mostra el % de cada color. Toca-les per acostar-t'hi.</p>
+      <p><b>Barra de dies:</b> mitjana de les zones que es veuen ara al mapa (matí | tarda). Canvia quan mous el mapa. Amb <b>vora discontínua</b>, previsió orientativa (a partir del 6è dia).</p>
+      <p class="note">Mapes © ICGC (CC BY) · previsió Open-Meteo (CC BY 4.0). Més detall a Menú ▸ Fonts i avís.</p>`],
+    nota: ["Com es calcula la nota", `
+      <p>Una nota de 0 a 10 per a cada franja: <b>matí</b> (8–13 h) i <b>tarda</b> (14–19 h), només amb llum. És la mitjana de les hores de la franja.</p>
+      <p>Cada hora parteix de 10 i resta per:</p>
+      <ul><li>Risc de pluja o de tempesta.</li><li>Fred o calor: sensació fora de ${crit.comfLo}–${crit.comfHi} °C.</li><li>Roca massa calenta, gelada o humida (la roca «sua» quan l'aire és a prop del punt de rosada).</li>
+      <li>Ratxes: es nota a partir de ${C.gustMid} km/h; més de ${C.gustMax} km/h ${mod === "classica" ? "bloqueja la clàssica" : "resta molt en esportiva"}.</li></ul>
+      <p><b>Sempre vermell:</b> pluja, tempesta o roca molla a la franja. El motiu i l'hora surten sota la nota.</p>
+      <p>Si la zona té parets traçades, la nota és la de la millor paret (amb el seu sol i ombra).</p>
+      <p class="note">Els llindars es poden canviar a Menú ▸ Llindars.</p>`],
+    confort: ["Sensació tèrmica", `
+      <p>Temperatura que notes al peu de la paret: aire, humitat, vent i sol (si toca la paret).</p>
+      <p><b>Escalant:</b> et mous i escalfes (uns 4 °C més). <b>Assegurant:</b> estàs quiet i és qui passa més fred.</p>
+      <p>Còmode entre ${crit.comfLo} i ${crit.comfHi} °C. La roba (Menú ▸ Llindars) també corregeix la sensació.</p>
+      <p>És el valor de l'hora indicada (al mig de la franja triada).</p>`],
+    roca: ["Roca seca, humida o molla", `
+      <p>L'app suma la pluja que cau i la treu amb el sol a la paret, el vent i l'aire sec.</p>
+      <ul><li><b>Molla:</b> no s'hi pot escalar (nota vermella).</li><li><b>Humida:</b> s'hi pot anar, però resta punts.</li><li><b>Seca:</b> sense aigua retinguda.</li></ul>
+      <p>Cada roca reté l'aigua diferent. De més lenta a més ràpida d'assecar-se: ${R.join(", ")}.</p>
+      <p>Els mil·límetres són la pluja de les 72 hores anteriors.</p>`],
+    prova: ["Dades de prova", `
+      <p>Aquesta zona és del catàleg provisional: coordenades i altitud aproximades (centre de la zona) i encara sense parets revisades.</p>
+      <p>El veredicte és per a tota la zona. Traça una paret per tenir-ne el sol i l'ombra reals.</p>`]
+  })[k];
+}
+function openInfo(k){
+  const c = infoContent(k); if(!c) return;
+  $("infoTitle").textContent = c[0]; $("infoBody").innerHTML = c[1];
+  $("calSheet").hidden = true; $("rankSheet").hidden = true; $("infoSheet").hidden = false;
+}
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-info]"); if(!b) return; e.stopPropagation(); openInfo(b.dataset.info); }, true);
 
 /* ---------- RELLEU: lectura del model del terreny de l'ICGC (5 m, RGB) ---------- */
 // Cada rajola PNG codifica l'altitud: h = −10000 + (R·65536 + G·256 + B) · 0,1
