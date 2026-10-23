@@ -1,0 +1,14 @@
+# Temporal: baixa els llocs d'escalada de Catalunya d'OpenStreetMap (Overpass) i els deixa com a artefacte.
+name: OSM cru (prova)
+on: workflow_dispatch
+jobs:
+  raw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Overpass
+        run: |
+          curl -sS -m 300 --retry 3 --data-urlencode "data@tools/osm-query.txt" https://overpass-api.de/api/interpreter -o osm-raw.json
+          ls -l osm-raw.json; head -c 300 osm-raw.json
+      - uses: actions/upload-artifact@v4
+        with: {name: osm-raw, path: osm-raw.json}
