@@ -53,6 +53,45 @@ service cloud.firestore {
       allow delete: if signed() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
+    // Restriccions: les afegeix i les ratifica la comunitat (2 confirmacions d'altres persones).
+    // Per retirar-ne una: algú ho proposa (retPer) i 2 persones més ho confirmen (ret).
+    // L'administració, revisors i premium poden confirmar, retirar o esborrar directament.
+    match /restriccions/{id} {
+      function okR(d){
+        return d.tipus in ["niu", "tanc", "altre"] && str(d.zone, 60) && d.cadaAny is bool
+          && str(d.des, 10) && str(d.fins, 10)
+          && d.sector is string && d.sector.size() <= 120 && d.desc is string && d.desc.size() <= 300
+          && d.font is string && d.font.size() <= 300;
+      }
+      function aff(){ return request.resource.data.diff(resource.data).affectedKeys(); }
+      function addOnlyMe(m){ return request.resource.data[m].diff(resource.data[m]).addedKeys().hasOnly([request.auth.uid])
+        && request.resource.data[m].diff(resource.data[m]).removedKeys().size() == 0
+        && request.resource.data[m].diff(resource.data[m]).changedKeys().size() == 0; }
+      function sameEstat(){ return request.resource.data.estat == resource.data.estat; }
+      allow read: if true;
+      allow create: if verified() && hasProf() && okR(request.resource.data)
+        && request.resource.data.keys().hasOnly(["zone", "tipus", "cadaAny", "des", "fins", "sector", "desc", "font", "estat", "conf", "creatPer", "llicencia", "creat", "act"])
+        && request.resource.data.estat == "pendent" && request.resource.data.conf == {}
+        && request.resource.data.creatPer == request.auth.uid && request.resource.data.llicencia == "ODbL-1.0";
+      allow update: if verified() && hasProf() && (
+        // confirmar-la (no qui l'ha creada); amb 2 confirmacions passa a «confirmada»
+        (request.auth.uid != resource.data.creatPer && aff().hasOnly(["conf", "estat", "act"]) && addOnlyMe("conf")
+          && (sameEstat() || (request.resource.data.estat == "confirmada" && request.resource.data.conf.size() >= 2)))
+        // proposar-ne la retirada (si no n'hi ha cap de proposada)
+        || (!("retPer" in resource.data) && aff().hasOnly(["retPer", "ret", "act"])
+          && request.resource.data.retPer == request.auth.uid && request.resource.data.ret == {})
+        // confirmar la retirada (no qui l'ha proposada); amb 2 passa a «retirada»
+        || ("retPer" in resource.data && request.auth.uid != resource.data.retPer && aff().hasOnly(["ret", "estat", "act"]) && addOnlyMe("ret")
+          && (sameEstat() || (request.resource.data.estat == "retirada" && request.resource.data.ret.size() >= 2)))
+        // qui ha proposat la retirada la pot desfer
+        || ("retPer" in resource.data && request.auth.uid == resource.data.retPer && aff().hasOnly(["retPer", "ret", "act"])
+          && !("retPer" in request.resource.data))
+        // administració, revisors i premium
+        || (reviewer() && aff().hasOnly(["estat", "retPer", "ret", "act"]) && request.resource.data.estat in ["pendent", "confirmada", "retirada"])
+      );
+      allow delete: if reviewer() || (signed() && resource.data.creatPer == request.auth.uid && resource.data.estat == "pendent");
+    }
+
     match /parets/{id} {
       allow read: if true;
       allow create, update: if reviewer()

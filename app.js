@@ -387,7 +387,7 @@ function zonesGeoJSON(){
     const v = frSlot(zoneEval(z), dayKey), mid = v.rows[Math.floor(v.rows.length / 2)];
     const P = selDays.length > 1 ? periodEval(z) : null;
     return {type:"Feature", geometry:{type:"Point", coordinates:[z.lon, z.lat]},
-      properties:{id:z.id, lv: P ? P.lv : v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), lbl: P ? P.good + "/" + P.n : "",
+      properties:{id:z.id, rf: window.CEM_R ? CEM_R.flags(z).ic : "", lv: P ? P.lv : v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), lbl: P ? P.good + "/" + P.n : "",
         why: P ? `${P.good} de ${P.n} dies bons` : v.why, wd:mid ? mid.wd : -1, wkmh:mid ? Math.round(mid.wkmh) : -1}};
   })};
 }
@@ -398,7 +398,7 @@ function renderMarkers(){
 function zoneMarkerHTML(p){
   const z = ZONES.find(z => z.id === p.id), lvl = p.lv;
   const wind = ly.wind && p.wd >= 0 ? `<svg class="w" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(${(p.wd + 180) % 360}deg)"><path d="M12 2l7 9h-4.5v11h-5V11H5z" fill="currentColor" stroke="var(--surface)" stroke-width="1.2" stroke-linejoin="round"/></svg>` : "";
-  return `<span class="b lv-${lvl}${p.lbl ? " frac" : ""}">${p.lbl || (p.sc < 0 ? "–" : p.sc)}${LV_IC[lvl]}</span>${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
+  return `<span class="b lv-${lvl}${p.lbl ? " frac" : ""}">${p.lbl || (p.sc < 0 ? "–" : p.sc)}${LV_IC[lvl]}</span>${p.rf ? `<span class="rf" aria-hidden="true">${p.rf}</span>` : ""}${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
 }
 // Rodona d'un grup: anell amb el % de zones de cada color i el nombre de zones al centre
 function donutHTML(p){
@@ -558,6 +558,7 @@ function renderSheet(){
   const mapHref = isIOS ? `https://maps.apple.com/?ll=${z.lat},${z.lon}&q=${encodeURIComponent(z.name)}` : /Android/.test(navigator.userAgent) ? `geo:${z.lat},${z.lon}?q=${z.lat},${z.lon}(${encodeURIComponent(z.name)})` : "";
   h += `<div class="zloc"><span>📍 <b class="num">${ll}</b>${z.src === "provisional" ? ' <span class="muted">(aproximades)</span>' : ""}</span>` +
     `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (mapHref ? `<a class="btn sm pri" href="${mapHref}">Obre al mapa</a>` : "") + `</div>`;
+  if(window.CEM_R) h += CEM_R.sheetHTML(z);
   // parets
   h += `<div class="walls">`;
   if(!ws.length) h += `<p class="note">Encara no hi ha cap paret traçada: el veredicte és per a tota la zona (sol mitjà, sense orientació). Traça una paret per saber-ne el sol i l'ombra.</p>`;
@@ -655,8 +656,9 @@ let rankScope = store.get("cem_rank_scope", "all");
 function renderRank(){
   if(!DATA) return;
   const zs = rankScope === "vis" ? visibleZones() : ZONES;
-  const list = zs.map(z => ({z, P: periodEval(z), has: z.mods.includes(mod)}))
-    .sort((a, b) => (b.has - a.has) || (b.P.good - a.P.good) || ((b.P.avg ?? -1) - (a.P.avg ?? -1)));
+  // primer les zones amb la modalitat; les tancades o amb restricció confirmada de tota la zona, al final
+  const list = zs.map(z => ({z, P: periodEval(z), has: z.mods.includes(mod), F: window.CEM_R ? CEM_R.flags(z) : {}}))
+    .sort((a, b) => (b.has - a.has) || (!!a.F.full - !!b.F.full) || (b.P.good - a.P.good) || ((b.P.avg ?? -1) - (a.P.avg ?? -1)));
   $("rankBody").innerHTML =
     `<div class="row rk-top"><span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()} · ${mod === "classica" ? "clàssica" : "esportiva"}</span>` +
     `<div class="seg" role="group" aria-label="Quines zones" id="rankSeg"><button type="button" data-rs="all" aria-pressed="${rankScope === "all"}">Totes</button>` +
@@ -664,6 +666,7 @@ function renderRank(){
     (list.length ? list.map((x, i) => { const P = x.P, z = x.z;
       return `<button type="button" class="rk${x.has ? "" : " off"}" data-zone="${z.id}"><span class="rn num">${i + 1}</span>` +
         `<span class="rm"><b>${esc(z.name)}</b><small>${ROCKS[z.rock].name} · ${z.alt} m${x.has ? "" : " · sense " + (mod === "classica" ? "clàssica" : "esportiva")}</small>` +
+        (x.F.ic ? `<span class="rflag${x.F.full ? " full" : x.F.pend ? " pend" : ""}">${x.F.ic} ${esc(x.F.txt)}</span>` : "") + `` +
         `<span class="rd">${P.per.map(d => `<i class="lv-${d.v.lv}" title="${dayLbl(d.k, true)}: ${esc(d.v.why)}">${dayLbl(d.k)} ${d.v.sc == null ? "–" : Math.round(d.v.sc)}</i>`).join("")}</span>` +
         (P.n === 1 ? `<small>${esc(P.per[0].v.why)}</small>` : "") + `</span>` +
         `<span class="rv2 lv-${P.lv}">${P.n > 1 ? P.good + "/" + P.n : P.avg == null ? "–" : Math.round(P.avg)}<small>${P.n > 1 ? "dies bons" : "/10"}</small></span></button>`; }).join("")

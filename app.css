@@ -279,3 +279,20 @@ details.more[open] summary::after{content:"▴"}
 .zloc > span{margin-right:auto}
 a.btn{text-decoration:none;color:inherit}
 a.btn.pri{color:var(--on-accent)}
+
+/* restriccions i Pla Alfa */
+.zm .rf{position:absolute;left:-8px;top:-8px;width:24px;height:24px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:14px;line-height:1;box-shadow:0 1px 3px #0005}
+.rsec{display:flex;flex-direction:column;gap:8px;background:var(--surface-2);border-radius:14px;padding:10px 12px}
+.rh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rrow{display:grid;grid-template-columns:24px 1fr;gap:4px 8px;align-items:start;border-left:4px solid var(--line);padding:6px 0 6px 8px;font-size:.9em}
+.rrow.no{border-left-color:var(--no)} .rrow.mid{border-left-color:var(--mid)}
+.rrow.off{opacity:.6}
+.rrow > span:first-child{font-size:1.2em;line-height:1.2}
+.racts{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
+.racts:empty{display:none}
+.rst{display:inline-block;margin-top:3px;border-radius:999px;padding:1px 8px;font-size:.8em;font-weight:800;color:var(--on-lv)}
+.rst.ok{background:var(--ok)} .rst.mid{background:var(--mid)}
+.lnk{border:0;background:none;padding:0;color:var(--accent);font-weight:700;text-decoration:underline;cursor:pointer;min-height:32px}
+.rflag{font-size:.8em;font-weight:700;color:var(--mid)}
+.rflag.full{color:var(--no)}
+.acc input[type=date],.acc input[type=url]{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 12px;font-size:1em}

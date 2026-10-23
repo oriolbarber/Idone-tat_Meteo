@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=5">
+<link rel="stylesheet" href="app.css?v=6">
 </head>
 <body>
 
@@ -205,6 +205,26 @@
   </div>
 </div>
 
+<div class="panel" id="pRestr" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Nova restricció</h2><span></span></div>
+  <div class="pbody acc">
+    <p>Zona: <b id="rfZone"></b></p>
+    <div class="prow"><span class="lbl">Tipus</span>
+      <div class="seg" role="group" aria-label="Tipus de restricció" id="rfTipus">
+        <button type="button" data-t="niu">Nidificació</button><button type="button" data-t="tanc">Tancament</button><button type="button" data-t="altre">Altres</button></div></div>
+    <div class="row"><label style="flex:1">Des de<input type="date" id="rfDes"></label><label style="flex:1">Fins a<input type="date" id="rfFins"></label></div>
+    <label class="ck"><input type="checkbox" id="rfAny"> Es repeteix cada any (només compten el dia i el mes)</label>
+    <label>Sector o parets afectades (buit = tota la zona)<input type="text" id="rfSector" maxlength="120" placeholder="P. ex.: Falconera i Roca Petanta"></label>
+    <label>Explicació (opcional)<textarea id="rfDesc" maxlength="300"></textarea></label>
+    <label>Enllaç a la font oficial (recomanat)<input type="url" id="rfFont" inputmode="url" placeholder="https://parcs.diba.cat/…"></label>
+    <p class="note">Es mostrarà «per confirmar» fins que 2 persones més la confirmin. Per treure-la, algú proposa que ja no és vigent i 2 persones més ho confirmen.</p>
+    <label class="ck" id="rfLicRow"><input type="checkbox" id="rfLic"> Accepto que aquesta informació s'incorpori al catàleg de CEM sota la llicència oberta ODbL 1.0.</label>
+    <div class="amsg" id="rfMsg" hidden></div>
+    <button class="btn pri" type="button" id="rfSend">Afegeix la restricció</button>
+  </div>
+</div>
+
 <div class="panel" id="pFonts" hidden>
   <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Fonts i avís</h2><span></span></div>
@@ -213,6 +233,8 @@
     <p><b>Mapes i relleu:</b> © Institut Cartogràfic i Geològic de Catalunya (ICGC), llicència CC BY. Model del terreny de 5 m.</p>
     <p><b>Previsió i pluja passada:</b> Open-Meteo (open-meteo.com), CC BY 4.0. Gratuït només per a ús no comercial.</p>
     <p><b>Radar:</b> RainViewer.</p>
+    <p><b>Risc d'incendi:</b> Pla Alfa dels Agents Rurals (Generalitat de Catalunya), per municipi, avui i demà, i tancaments d'espais naturals.</p>
+    <p><b>Restriccions d'escalada:</b> les aporta la comunitat amb l'enllaç a la font oficial (parcs naturals, Diputació, Generalitat). Comprova-les sempre a la font: l'app no en garanteix la vigència.</p>
     <p><b>Zones i parets:</b> catàleg de CEM, obert sota la llicència ODbL 1.0; la base de les zones serà OpenStreetMap (© col·laboradors d'OpenStreetMap, ODbL). Les parets les aporta la comunitat i les revisen persones voluntàries.</p>
     <p><b>Com es calcula:</b> la pluja de les últimes 72 h i el secat de la roca (segons el tipus de roca, el sol a la paret, el vent i la humitat); la tempesta; el confort (sensació tèrmica amb el sol a la paret, el vent, la humitat, la roba i si escales o assegures); l'adherència (roca massa calenta, freda o humida) i el vent màxim de la modalitat.</p>
     <p><b>Sempre vermell:</b> roca molla, pluja o tempesta prevista a la franja.</p>
@@ -221,7 +243,8 @@
 
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
-<script src="app.js?v=5"></script>
-<script src="cloud.js?v=1"></script>
+<script src="app.js?v=6"></script>
+<script src="cloud.js?v=2"></script>
+<script src="restr.js?v=1"></script>
 </body>
 </html>

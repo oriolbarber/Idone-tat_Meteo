@@ -397,7 +397,19 @@ document.addEventListener("click", e => {
 $("licSend").addEventListener("click", sendProposal);
 
 // API per a app.js
-window.CEM_CLOUD = {propose, refresh: () => { fetchPublic(true); if(user) refreshMine(); }};
+// Per a altres mòduls (restr.js): comprova que hi ha compte amb el correu confirmat i torna l'accés a Firestore.
+// Si no n'hi ha, obre ⋮ ▸ Compte amb el motiu i torna null.
+async function need(why){
+  if(!user){ mode = store.get("cem_had") ? "entra" : "alta"; document.querySelectorAll(".panel").forEach(x => x.hidden = true); openPanel("pCompte"); load().catch(() => {});
+    setTimeout(() => say(why || "Per fer això cal un compte. Entra o fes-te'n un: és gratuït.", false), 50); return null; }
+  if(!verified() || !prof){ document.querySelectorAll(".panel").forEach(x => x.hidden = true); openPanel("pCompte");
+    setTimeout(() => say(!prof ? "Falta crear el perfil." : "Abans, confirma el correu: obre l'enllaç que t'hem enviat i prem «Ja l'he confirmat».", true), 50); return null; }
+  const f = await fs();
+  return {f, db, uid: user.uid, isRev, odbl: !!prof.odblAt,
+    markOdbl: async () => { if(prof.odblAt) return; await f.updateDoc(f.doc(db, "usuaris", user.uid), {odblAt: f.serverTimestamp()}).catch(() => {}); prof.odblAt = true; }};
+}
+window.CEM_CLOUD = {propose, need, uid: () => user ? user.uid : null, isRev: () => isRev, errText,
+  refresh: () => { fetchPublic(true); if(user) refreshMine(); }};
 
 /* ---------- inici ---------- */
 fetchPublic();
