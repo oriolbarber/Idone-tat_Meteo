@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=5">
 </head>
 <body>
 
@@ -66,11 +66,30 @@
 
 <!-- dia i franja -->
 <div class="daybar card" id="daybar">
+  <div class="dbtop">
+    <button class="btn sm" type="button" id="calBtn" aria-label="Tria els dies de la sortida">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>1 dia</span></button>
+    <div class="seg" role="group" aria-label="Franja" id="slotSeg">
+      <button type="button" data-slot="am">Matí</button><button type="button" data-slot="pm">Tarda</button><button type="button" data-slot="dia">Dia</button></div>
+    <button class="btn sm pri" type="button" id="rankBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></svg>On anar</button>
+  </div>
   <div class="dayhint" id="dayHint" aria-live="polite"></div>
-  <div class="days" id="days" role="group" aria-label="Dia"></div>
-  <div class="seg slot-seg" role="group" aria-label="Franja" id="slotSeg">
-    <button type="button" data-slot="am">Matí</button><button type="button" data-slot="pm">Tarda</button></div>
+  <div class="days" id="days" role="group" aria-label="Dies"></div>
 </div>
+
+<!-- calendari i rànquing: fulls sobre el mapa -->
+<section class="msheet" id="calSheet" hidden aria-labelledby="calTitle">
+  <div class="sh-h"><h2 id="calTitle">Dies de la sortida</h2><button class="ib" type="button" data-shclose aria-label="Tanca">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="sh-body" id="calBody"></div>
+  <div class="sh-foot"><button class="btn pri" type="button" data-shclose>Fet</button></div>
+</section>
+<section class="msheet" id="rankSheet" hidden aria-labelledby="rankTitle">
+  <div class="sh-h"><h2 id="rankTitle">On anar</h2><button class="ib" type="button" data-shclose aria-label="Tanca">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="sh-body" id="rankBody"></div>
+</section>
 <div class="msg" id="msg" role="status">Carregant la previsió…</div>
 
 <!-- traçat de paret -->
@@ -202,7 +221,7 @@
 
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script src="cloud.js?v=1"></script>
 </body>
 </html>

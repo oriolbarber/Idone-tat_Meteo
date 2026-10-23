@@ -89,8 +89,6 @@ h2{font-size:1.3em;margin:0;line-height:1.15}
 .days button[aria-pressed="true"] small{color:inherit}
 .days .dk{display:flex;gap:2px;margin-top:3px}
 .days .dk i{min-width:20px;height:17px;border-radius:5px;font-style:normal;font-family:var(--f-num);font-size:11px;font-weight:800;line-height:17px;text-align:center;color:var(--on-lv)}
-.slot-seg{flex:none;flex-direction:column}
-.slot-seg button{min-height:24px;font-size:.8em}
 
 .msg{position:fixed;z-index:14;left:50%;transform:translateX(-50%);top:calc(76px + env(safe-area-inset-top,0px));max-width:calc(100vw - 90px);
   background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85em;font-weight:600;box-shadow:var(--shadow)}
@@ -229,3 +227,55 @@ details.more[open] summary::after{content:"▴"}
 .rv .row .btn{flex:1}
 .dot-badge{position:absolute;top:6px;right:6px;width:12px;height:12px;border-radius:50%;background:var(--no);border:2px solid var(--surface)}
 #menuBtn{position:relative}
+
+/* barra de dies: dies de la sortida, franja i «On anar» */
+.dbtop{flex-basis:100%;display:flex;align-items:center;gap:6px}
+.dbtop #slotSeg{margin:0 auto;flex-wrap:nowrap}
+.dbtop #slotSeg button{min-height:38px;padding:0 10px}
+.dbtop .btn{gap:6px;flex:none}
+.days button.foc{outline:3px solid var(--ink);outline-offset:-3px}
+.days button.far{border-style:dashed}
+.zm .b.frac{font-size:14px;letter-spacing:-.03em}
+/* fulls sobre el mapa (calendari, rànquing) */
+.msheet{position:fixed;z-index:35;left:0;right:0;bottom:0;max-height:86dvh;background:var(--surface);border-top-left-radius:22px;border-top-right-radius:22px;
+  box-shadow:0 -8px 30px #0005;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (min-width:760px){.msheet{left:auto;right:8px;bottom:8px;top:calc(76px + env(safe-area-inset-top,0px));width:460px;max-height:none;border-radius:var(--r)}}
+.msheet .sh-h{align-items:center;padding:12px 14px 6px}
+.sh-foot{padding:8px 14px 12px;display:flex}
+.sh-foot .btn{flex:1}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center}
+.cal > span{font-size:.75em;font-weight:700;color:var(--muted)}
+.cd{min-height:58px;border-radius:12px;border:2px solid var(--line);background:var(--surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:0}
+.cd.empty{border:0;background:none}
+.cd b{font-size:1.05em}
+.cd i{font-style:normal;font-family:var(--f-num);font-size:11px;font-weight:800;min-width:22px;border-radius:5px;color:var(--on-lv);line-height:16px}
+.cd.on{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
+.cd.far{border-style:dashed}
+.cd.on.far{border-color:var(--on-accent)}
+/* rànquing */
+.rk-top{align-items:center;justify-content:space-between}
+.rk{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:14px;padding:10px 12px;cursor:pointer}
+.rk.off{opacity:.55}
+.rk .rn{font-weight:800;color:var(--muted);min-width:18px}
+.rk .rm{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.rk .rm small{color:var(--muted);font-weight:600;font-size:.8em}
+.rd{display:flex;gap:3px;flex-wrap:wrap}
+.rd i{font-style:normal;font-family:var(--f-num);font-size:11px;font-weight:800;border-radius:5px;padding:1px 5px;color:var(--on-lv)}
+.rv2{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:58px;min-height:52px;border-radius:12px;color:var(--on-lv);font-family:var(--f-num);font-weight:800;font-size:1.25em;line-height:1}
+.rv2 small{font-family:var(--f);font-size:.5em;font-weight:700;margin-top:3px}
+/* fitxa: resum del període i coordenades */
+.psum{background:var(--surface-2);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.psum .ph{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.psum .ph .vt{display:flex;align-items:center;gap:6px}
+.pdays{display:flex;gap:6px;overflow-x:auto}
+.pd{flex:none;width:96px;border-radius:12px;border:2px solid transparent;padding:6px 8px;display:flex;flex-direction:column;gap:1px;text-align:left;cursor:pointer;background:var(--surface)}
+.pd.ok{background:var(--ok-t)} .pd.mid{background:var(--mid-t)} .pd.no{background:var(--no-t)}
+.pd.far{border-style:dashed;border-color:var(--line)}
+.pd[aria-pressed="true"]{border-color:var(--ink);border-style:solid}
+.pd span{font-weight:700;font-size:.85em}
+.pd b{font-size:1.5em;line-height:1.1}
+.pd small{font-size:.72em;color:var(--muted);font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.zloc{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.zloc > span{margin-right:auto}
+a.btn{text-decoration:none;color:inherit}
+a.btn.pri{color:var(--on-accent)}

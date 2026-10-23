@@ -41,7 +41,8 @@ let crit = Object.assign(structuredClone(CRIT_DEF), store.get("cem_crit", {}));
 let userWalls = store.get("cem_walls", []);               // parets traçades en aquest mòbil (w.prop = estat de la proposta)
 let cloudWalls = store.get("cem_cloud_walls", []);        // parets aprovades per a tothom (col·lecció «parets», les porta cloud.js)
 let azFix = store.get("cem_azfix", {});                   // correcció manual: {"paretId:tram": az}
-let dayKey = null;                                        // dia triat (AAAA-MM-DD)
+let dayKey = null;                                        // dia enfocat (AAAA-MM-DD): el que es mostra en detall
+let selDays = store.get("cem_days", []);                  // dies de la sortida (un o diversos, no cal que siguin seguits)
 let selZone = null;                                       // zona oberta a la fitxa
 let DATA = null;                                          // previsió: {zoneId: {t:[ms], key:[…], h:[…], …}, sun:{zoneId:{key:{rise,set}}}}
 
@@ -122,8 +123,11 @@ async function load(){
       msg("Sense connexió: previsió de fa " + ago(old.at) + ".", true);
     }else{ msg("No s'ha pogut carregar la previsió. Torna-ho a provar amb connexió.", true); return; }
   }
-  if(!dayKey || !daysAvail().includes(dayKey)) dayKey = localOf(Date.now()).key;
-  if(!slot) slot = localOf(Date.now()).h >= 14 ? "pm" : "am";
+  const av = daysAvail();
+  selDays = selDays.filter(k => av.includes(k));
+  if(!selDays.length) selDays = [localOf(Date.now()).key];
+  if(!dayKey || !selDays.includes(dayKey)) dayKey = selDays[0];
+  if(!slot) slot = "dia";
   renderAll();
 }
 function ago(ms){ const m = Math.round((Date.now() - ms) / 60000); return m < 60 ? m + " min" : m < 1440 ? Math.round(m / 60) + " h" : Math.round(m / 1440) + " dies"; }
@@ -237,6 +241,46 @@ function zoneSlot(ev, key, s){
   return best || {...zs, seg:null};
 }
 
+// Franja: am | pm | dia. «Tot el dia» = mitjana de matí i tarda; si una franja està bloquejada, el dia no pot ser verd.
+function frSlot(ev, key, s = slot){
+  if(s !== "dia") return zoneSlot(ev, key, s);
+  const a = zoneSlot(ev, key, "am"), p = zoneSlot(ev, key, "pm"), vs = [a, p].filter(v => v.sc != null);
+  if(!vs.length) return {...a, lv:"na", sc:null, why:"Fora d'hores de llum", rows:[]};
+  const sc = vs.reduce((t, v) => t + v.sc, 0) / vs.length, block = a.block || p.block;
+  const lv = block ? (sc >= 4 ? "mid" : "no") : lvOf(sc, null);
+  let why = vs.length < 2 || a.lv === p.lv ? (lv === "ok" ? "Bones condicions tot el dia" : vs[0].why)
+    : a.sc >= p.sc ? "Millor al matí · tarda: " + p.why.toLowerCase() : "Millor a la tarda · matí: " + a.why.toLowerCase();
+  return {lv, sc, why, rows: a.rows.concat(p.rows), seg: (a.sc ?? -1) >= (p.sc ?? -1) ? a.seg : p.seg, block};
+}
+const FR_TXT = {am:"Matí", pm:"Tarda", dia:"Tot el dia"};
+// Període (dies de la sortida): quants dies són bons (verds) i la nota mitjana
+function periodEval(z){
+  const ev = zoneEval(z), per = selDays.map(k => ({k, v: frSlot(ev, k)})), ok = per.filter(x => x.v.sc != null);
+  const n = per.length, good = ok.filter(x => x.v.lv === "ok").length;
+  const avg = ok.length ? ok.reduce((t, x) => t + x.v.sc, 0) / ok.length : null;
+  const lv = !ok.length ? "na" : n === 1 ? per[0].v.lv : good === n ? "ok" : good > 0 && good * 2 >= n ? "mid" : "no";
+  return {per, n, good, avg, lv};
+}
+// Dies a partir del 6è: previsió orientativa
+const dayIdx = k => Math.round((Date.parse(k + "T12:00:00") - Date.parse(localOf(Date.now()).key + "T12:00:00")) / 86400e3);
+const isFar = k => dayIdx(k) >= 5;
+function dayLbl(k, long){
+  const d = new Date(k + "T12:00:00"), i = dayIdx(k);
+  const w = i === 0 ? "Avui" : i === 1 ? "Demà" : long ? ["diumenge","dilluns","dimarts","dimecres","dijous","divendres","dissabte"][d.getDay()] : DOW[d.getDay()];
+  return long ? `${w} ${d.getDate()} ${MONTHS[d.getMonth()]}` : w;
+}
+function selTxt(){
+  if(selDays.length === 1) return dayLbl(selDays[0], true);
+  const s = selDays.slice().sort(), seg = s.every((k, i) => !i || dayIdx(k) === dayIdx(s[i - 1]) + 1);
+  return seg ? `${dayLbl(s[0])} ${new Date(s[0] + "T12:00:00").getDate()} – ${dayLbl(s[s.length - 1])} ${new Date(s[s.length - 1] + "T12:00:00").getDate()} ${MONTHS[new Date(s[s.length - 1] + "T12:00:00").getMonth()]}`
+    : s.length + " dies";
+}
+function setDays(arr, focus){
+  selDays = [...new Set(arr)].sort(); store.set("cem_days", selDays);
+  dayKey = focus && selDays.includes(focus) ? focus : selDays.includes(dayKey) ? dayKey : selDays[0];
+  renderAll();
+}
+
 /* ---------- missatges ---------- */
 function msg(t, err){ const m = $("msg"); m.hidden = !t; if(t){ m.textContent = t; m.classList.toggle("err", !!err); } }
 
@@ -340,9 +384,11 @@ let markersOnScreen = {}, mkVer = 0;
 const LV_KEYS = ["ok", "mid", "no", "na"];
 function zonesGeoJSON(){
   return {type:"FeatureCollection", features: ZONES.map(z => {
-    const v = zoneSlot(zoneEval(z), dayKey, slot), mid = v.rows[Math.floor(v.rows.length / 2)];
+    const v = frSlot(zoneEval(z), dayKey), mid = v.rows[Math.floor(v.rows.length / 2)];
+    const P = selDays.length > 1 ? periodEval(z) : null;
     return {type:"Feature", geometry:{type:"Point", coordinates:[z.lon, z.lat]},
-      properties:{id:z.id, lv:v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), why:v.why, wd:mid ? mid.wd : -1, wkmh:mid ? Math.round(mid.wkmh) : -1}};
+      properties:{id:z.id, lv: P ? P.lv : v.lv, sc:v.sc == null ? -1 : Math.round(v.sc), lbl: P ? P.good + "/" + P.n : "",
+        why: P ? `${P.good} de ${P.n} dies bons` : v.why, wd:mid ? mid.wd : -1, wkmh:mid ? Math.round(mid.wkmh) : -1}};
   })};
 }
 function renderMarkers(){
@@ -352,7 +398,7 @@ function renderMarkers(){
 function zoneMarkerHTML(p){
   const z = ZONES.find(z => z.id === p.id), lvl = p.lv;
   const wind = ly.wind && p.wd >= 0 ? `<svg class="w" viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(${(p.wd + 180) % 360}deg)"><path d="M12 2l7 9h-4.5v11h-5V11H5z" fill="currentColor" stroke="var(--surface)" stroke-width="1.2" stroke-linejoin="round"/></svg>` : "";
-  return `<span class="b lv-${lvl}">${p.sc < 0 ? "–" : p.sc}${LV_IC[lvl]}</span>${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
+  return `<span class="b lv-${lvl}${p.lbl ? " frac" : ""}">${p.lbl || (p.sc < 0 ? "–" : p.sc)}${LV_IC[lvl]}</span>${wind}<span class="n">${esc(z.name)}${ly.wind && p.wkmh >= 0 ? " · " + p.wkmh + " km/h" : ""}</span>`;
 }
 // Rodona d'un grup: anell amb el % de zones de cada color i el nombre de zones al centre
 function donutHTML(p){
@@ -395,7 +441,7 @@ function updateMarkers(){
       const el = m.getElement();
       if(el.dataset.v !== String(mkVer)){ el.dataset.v = mkVer; el.innerHTML = zoneMarkerHTML(p);
         const z = ZONES.find(z => z.id === id);
-        el.setAttribute("aria-label", `${z.name}: ${LV_TXT[p.lv]}${p.sc >= 0 ? ", " + p.sc + " sobre 10" : ""}. ${p.why}`); }
+        el.setAttribute("aria-label", `${z.name}: ${LV_TXT[p.lv]}${p.lbl ? "" : p.sc >= 0 ? ", " + p.sc + " sobre 10" : ""}. ${p.why}`); }
       next[id] = m;
     }
   });
@@ -424,34 +470,37 @@ function visibleZones(){
   return ZONES.filter(z => b.contains([z.lon, z.lat]));
 }
 function avgSlot(zs, k, s){
-  const sc = zs.map(z => zoneSlot(zoneEval(z), k, s).sc).filter(v => v != null);
+  const sc = zs.map(z => frSlot(zoneEval(z), k, s).sc).filter(v => v != null);
   if(!sc.length) return {lv:"na", sc:null};
   const m = sc.reduce((a, b) => a + b, 0) / sc.length;
   return {lv: lvOf(m, null), sc: m};
 }
 function renderDays(scroll = true){
   if(!DATA) return;
-  const box = $("days"), keys = daysAvail(), today = localOf(Date.now()).key, zs = visibleZones();
+  const box = $("days"), keys = daysAvail(), zs = visibleZones();
   const cell = v => `<i class="lv-${v.lv}">${v.sc == null ? "–" : Math.round(v.sc)}</i>`;
-  box.innerHTML = keys.map((k, i) => {
-    const d = new Date(k + "T12:00:00");
-    const lbl = k === today ? "Avui" : i === 1 && keys[0] === today ? "Demà" : DOW[d.getDay()];
+  box.innerHTML = keys.map(k => {
+    const d = new Date(k + "T12:00:00"), on = selDays.includes(k);
     const am = avgSlot(zs, k, "am"), pm = avgSlot(zs, k, "pm");
-    const aria = `${lbl} ${d.getDate()} ${MONTHS[d.getMonth()]}. Mitjana de les zones a la vista: matí ${am.sc == null ? "sense dades" : Math.round(am.sc)}, tarda ${pm.sc == null ? "sense dades" : Math.round(pm.sc)}.`;
-    return `<button type="button" data-day="${k}" aria-pressed="${k === dayKey}" aria-label="${aria}"><b>${lbl}</b><small>${d.getDate()} ${MONTHS[d.getMonth()]}</small>` +
+    const aria = `${dayLbl(k, true)}${on ? ", triat" : ""}${isFar(k) ? ", previsió orientativa" : ""}. Mitjana de les zones a la vista: matí ${am.sc == null ? "sense dades" : Math.round(am.sc)}, tarda ${pm.sc == null ? "sense dades" : Math.round(pm.sc)}.`;
+    return `<button type="button" data-day="${k}" aria-pressed="${on}" class="${k === dayKey && selDays.length > 1 ? "foc" : ""}${isFar(k) ? " far" : ""}" aria-label="${aria}"><b>${dayLbl(k)}</b><small>${d.getDate()} ${MONTHS[d.getMonth()]}</small>` +
       `<span class="dk" aria-hidden="true">${cell(am)}${cell(pm)}</span></button>`;
   }).join("");
   $("dayHint").textContent = zs.length ? `Mitjana de ${zs.length === 1 ? "la zona" : "les " + zs.length + " zones"} a la vista · matí | tarda` : "Cap zona a la vista: mou o allunya el mapa";
+  $("calBtn").querySelector("span").textContent = selDays.length === 1 ? "1 dia" : selDays.length + " dies";
   document.querySelectorAll("#slotSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.slot === slot)));
-  if(scroll){ const sel = box.querySelector('[aria-pressed="true"]'); if(sel) sel.scrollIntoView({inline:"nearest", block:"nearest"}); }
+  if(scroll){ const sel = box.querySelector(".foc") || box.querySelector('[aria-pressed="true"]'); if(sel) sel.scrollIntoView({inline:"nearest", block:"nearest"}); }
   document.documentElement.style.setProperty("--daybar-h", $("daybar").offsetHeight + 16 + "px");
+  if(!$("calSheet").hidden) renderCal();
+  if(!$("rankSheet").hidden) renderRank();
 }
-$("days").addEventListener("click", e => { const b = e.target.closest("button[data-day]"); if(!b) return; dayKey = b.dataset.day; renderAll(); });
+$("days").addEventListener("click", e => { const b = e.target.closest("button[data-day]"); if(!b) return; const k = b.dataset.day;
+  if(selDays.length > 1 && selDays.includes(k)){ dayKey = k; renderAll(); } else setDays([k], k); });
 $("slotSeg").addEventListener("click", e => { const b = e.target.closest("button[data-slot]"); if(!b) return; slot = b.dataset.slot; store.set("cem_slot", slot); renderAll(); });
 $("modSeg").addEventListener("click", e => { const b = e.target.closest("button[data-mod]"); if(!b) return; mod = b.dataset.mod; store.set("cem_mod", mod); renderAll(); });
 
 /* ---------- FITXA DE LA ZONA ---------- */
-function openZone(id){ selZone = id; $("sheet").hidden = false; renderSheet(); const z = ZONES.find(z => z.id === id); if(z && map.getZoom() < 9) map.easeTo({center:[z.lon, z.lat], zoom: 10}); }
+function openZone(id){ selZone = id; $("calSheet").hidden = true; $("rankSheet").hidden = true; $("sheet").hidden = false; renderSheet(); const z = ZONES.find(z => z.id === id); if(z && map.getZoom() < 9) map.easeTo({center:[z.lon, z.lat], zoom: 10}); }
 $("sheetClose").addEventListener("click", () => { selZone = null; $("sheet").hidden = true; });
 const pill = (lv, txt) => `<span class="pill lv-${lv}">${LV_IC[lv].replace("<svg", '<svg width="13" height="13"')}${esc(txt)}</span>`;
 function feelLv(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 || f > hi + 6 ? "no" : f < lo || f > hi ? "mid" : "ok"; }
@@ -465,14 +514,24 @@ function renderSheet(){
   $("zName").textContent = z.name;
   $("zMeta").textContent = `${ROCKS[z.rock].name} · ${z.alt} m · ${z.mods.map(m => m === "classica" ? "clàssica" : "esportiva").join(", ")}${z.src === "provisional" ? " · dades de prova" : ""}`;
   const V = {am: zoneSlot(ev, dayKey, "am"), pm: zoneSlot(ev, dayKey, "pm")};
-  const cur = V[slot], rows = cur.rows.length ? cur.rows : V.am.rows.concat(V.pm.rows);
+  const cur = slot === "dia" ? frSlot(ev, dayKey, "dia") : V[slot], rows = cur.rows.length ? cur.rows : V.am.rows.concat(V.pm.rows);
   const mid = rows[Math.floor(rows.length / 2)];
   const vb = s => { const v = V[s];
     return `<button type="button" class="vb ${v.lv}" data-slot="${s}" aria-pressed="${s === slot}"><span class="h"><span class="lbl">${s === "am" ? "Matí" : "Tarda"}</span>` +
       `<span class="sc">${v.sc == null ? "–" : Math.round(v.sc)}<small>/10</small></span></span>` +
       `<span class="vt tx-${v.lv}">${LV_IC[v.lv].replace("<svg", '<svg width="18" height="18"')}${LV_TXT[v.lv]}</span><span class="why">${esc(v.why)}</span>` +
       (v.seg ? `<span class="why">Millor: ${esc(v.seg.w.name)}${v.seg.w.segs.length > 1 ? " (tram " + cardOf(v.seg.az) + ")" : ""}</span>` : "") + `</button>`; };
-  let h = `<div class="verd">${vb("am")}${vb("pm")}</div>`;
+  let h = "";
+  if(selDays.length > 1){
+    const P = periodEval(z);
+    h += `<div class="psum"><div class="ph"><span class="vt tx-${P.lv}">${LV_IC[P.lv].replace("<svg", '<svg width="18" height="18"')}<b>${P.good} de ${P.n} dies bons</b></span>` +
+      `<span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()}${P.avg != null ? " · mitjana " + Math.round(P.avg) : ""}</span></div>` +
+      `<div class="pdays">${P.per.map(x => `<button type="button" class="pd ${x.v.lv}${isFar(x.k) ? " far" : ""}" data-pday="${x.k}" aria-pressed="${x.k === dayKey}">` +
+        `<span>${dayLbl(x.k)} ${new Date(x.k + "T12:00:00").getDate()}</span><b class="num">${x.v.sc == null ? "–" : Math.round(x.v.sc)}</b><small>${esc(x.v.why)}</small></button>`).join("")}</div></div>` +
+      `<p class="note">Detall de ${esc(dayLbl(dayKey, true))}:</p>`;
+  }
+  h += `<div class="verd">${vb("am")}${vb("pm")}</div>`;
+  if(selDays.some(isFar)) h += `<p class="note">A partir del 6è dia la previsió és orientativa: torna-la a mirar més a prop de la sortida.</p>`;
   if(z.mods.indexOf(mod) < 0) h += `<p class="note">Aquesta zona no té ${mod === "classica" ? "vies clàssiques" : "escalada esportiva"} al catàleg.</p>`;
   // confort
   if(mid){
@@ -494,6 +553,11 @@ function renderSheet(){
     `<span>Roca <b>${st}</b>${since}</span><span>Pluja 72 h <b>${rain72.toFixed(1).replace(".", ",")} mm</b></span>` +
     (ref ? `<span>Vent <b>${Math.round(ref.wkmh)}</b> km/h ${cardOf(ref.wd)} · ratxa <b>${Math.round(ref.gust)}</b></span><span>Humitat <b>${Math.round(ref.RH)} %</b></span>` : "") +
     (sun ? `<span>Llum <b>${tf(sun.rise)}–${tf(sun.set)}</b></span>` : "") + `</div>`;
+  // coordenades de la zona i botó per obrir-les a l'app de mapes del mòbil (no al navegador)
+  const ll = `${z.lat.toFixed(5)}, ${z.lon.toFixed(5)}`, isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const mapHref = isIOS ? `https://maps.apple.com/?ll=${z.lat},${z.lon}&q=${encodeURIComponent(z.name)}` : /Android/.test(navigator.userAgent) ? `geo:${z.lat},${z.lon}?q=${z.lat},${z.lon}(${encodeURIComponent(z.name)})` : "";
+  h += `<div class="zloc"><span>📍 <b class="num">${ll}</b>${z.src === "provisional" ? ' <span class="muted">(aproximades)</span>' : ""}</span>` +
+    `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (mapHref ? `<a class="btn sm pri" href="${mapHref}">Obre al mapa</a>` : "") + `</div>`;
   // parets
   h += `<div class="walls">`;
   if(!ws.length) h += `<p class="note">Encara no hi ha cap paret traçada: el veredicte és per a tota la zona (sol mitjà, sense orientació). Traça una paret per saber-ne el sol i l'ombra.</p>`;
@@ -526,6 +590,10 @@ function renderSheet(){
   $("zBody").innerHTML = h;
 }
 $("zBody").addEventListener("click", e => {
+  const pd = e.target.closest("button[data-pday]"); if(pd){ dayKey = pd.dataset.pday; renderAll(); return; }
+  const cp = e.target.closest("button[data-copy]");
+  if(cp){ const t = cp.dataset.copy; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => msg("Coordenades copiades."), () => msg(t));
+    setTimeout(() => msg(null), 3000); return; }
   const s = e.target.closest(".vb[data-slot]"); if(s){ slot = s.dataset.slot; store.set("cem_slot", slot); renderAll(); return; }
   const r = e.target.closest("#roleSeg button[data-role]"); if(r){ setRole(r.dataset.role); return; }
   const a = e.target.closest(".azfix button[data-az]");
@@ -543,6 +611,68 @@ document.addEventListener("click", e => { const b = e.target.closest && e.target
 function setRole(r){ role = r; store.set("cem_role", role); renderAll(); renderPanels(); }
 
 function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); }
+
+/* ---------- CALENDARI: dies de la sortida ---------- */
+function openSheet(id){ ["calSheet", "rankSheet"].forEach(x => $(x).hidden = x !== id); if(id === "calSheet") renderCal(); else renderRank(); }
+document.addEventListener("click", e => { const c = e.target.closest && e.target.closest("[data-shclose]"); if(c) c.closest(".msheet").hidden = true; });
+$("calBtn").addEventListener("click", () => openSheet("calSheet"));
+$("rankBtn").addEventListener("click", () => openSheet("rankSheet"));
+function presetDays(p){
+  const av = daysAvail(), today = av[0];
+  if(p === "avui") return [today];
+  if(p === "dema") return av.slice(1, 2);
+  if(p === "3") return av.slice(0, 3);
+  if(p === "cs"){ // aquest cap de setmana (el pròxim dissabte i diumenge; si avui és diumenge, avui)
+    const out = av.filter(k => { const d = new Date(k + "T12:00:00").getDay(); return (d === 6 || d === 0) && dayIdx(k) <= 6; });
+    const sat = out.find(k => new Date(k + "T12:00:00").getDay() === 6);
+    return sat ? out.filter(k => dayIdx(k) >= dayIdx(sat) && dayIdx(k) <= dayIdx(sat) + 1) : out.slice(0, 1);
+  }
+  return [];
+}
+function renderCal(){
+  const av = daysAvail(), zs = visibleZones(); if(!av.length) return;
+  const first = new Date(av[0] + "T12:00:00"), off = (first.getDay() + 6) % 7;   // dilluns = 0
+  const cells = [];
+  for(let i = 0; i < off; i++) cells.push(`<span class="cd empty"></span>`);
+  av.forEach(k => { const d = new Date(k + "T12:00:00"), v = avgSlot(zs, k, slot), on = selDays.includes(k);
+    cells.push(`<button type="button" class="cd${on ? " on" : ""}${isFar(k) ? " far" : ""}" data-cday="${k}" aria-pressed="${on}" aria-label="${dayLbl(k, true)}${isFar(k) ? ", previsió orientativa" : ""}">` +
+      `<b>${d.getDate()}</b><i class="lv-${v.lv}">${v.sc == null ? "–" : Math.round(v.sc)}</i></button>`); });
+  const pre = [["avui", "Avui"], ["dema", "Demà"], ["cs", "Cap de setmana"], ["3", "Pròxims 3 dies"]];
+  $("calBody").innerHTML = `<div class="row">${pre.map(([k, t]) => `<button class="btn sm" type="button" data-pre="${k}">${t}</button>`).join("")}</div>` +
+    `<div class="cal"><span>dl</span><span>dt</span><span>dc</span><span>dj</span><span>dv</span><span>ds</span><span>dg</span>${cells.join("")}</div>` +
+    `<p class="note">Toca els dies que vols sortir (no cal que siguin seguits). El número és la mitjana de les zones a la vista (${FR_TXT[slot].toLowerCase()}). Amb vora discontínua, previsió orientativa (6 dies o més).</p>` +
+    `<p><b>${esc(selTxt())}</b></p>`;
+}
+$("calBody").addEventListener("click", e => {
+  const p = e.target.closest("button[data-pre]"); if(p){ const d = presetDays(p.dataset.pre); if(d.length) setDays(d, d[0]); return; }
+  const c = e.target.closest("button[data-cday]"); if(!c) return; const k = c.dataset.cday;
+  if(selDays.includes(k)){ if(selDays.length > 1) setDays(selDays.filter(x => x !== k)); }   // sempre en queda un
+  else setDays(selDays.concat(k), k);
+});
+
+/* ---------- RÀNQUING «On anar» ---------- */
+let rankScope = store.get("cem_rank_scope", "all");
+function renderRank(){
+  if(!DATA) return;
+  const zs = rankScope === "vis" ? visibleZones() : ZONES;
+  const list = zs.map(z => ({z, P: periodEval(z), has: z.mods.includes(mod)}))
+    .sort((a, b) => (b.has - a.has) || (b.P.good - a.P.good) || ((b.P.avg ?? -1) - (a.P.avg ?? -1)));
+  $("rankBody").innerHTML =
+    `<div class="row rk-top"><span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()} · ${mod === "classica" ? "clàssica" : "esportiva"}</span>` +
+    `<div class="seg" role="group" aria-label="Quines zones" id="rankSeg"><button type="button" data-rs="all" aria-pressed="${rankScope === "all"}">Totes</button>` +
+    `<button type="button" data-rs="vis" aria-pressed="${rankScope === "vis"}">A la vista</button></div></div>` +
+    (list.length ? list.map((x, i) => { const P = x.P, z = x.z;
+      return `<button type="button" class="rk${x.has ? "" : " off"}" data-zone="${z.id}"><span class="rn num">${i + 1}</span>` +
+        `<span class="rm"><b>${esc(z.name)}</b><small>${ROCKS[z.rock].name} · ${z.alt} m${x.has ? "" : " · sense " + (mod === "classica" ? "clàssica" : "esportiva")}</small>` +
+        `<span class="rd">${P.per.map(d => `<i class="lv-${d.v.lv}" title="${dayLbl(d.k, true)}: ${esc(d.v.why)}">${dayLbl(d.k)} ${d.v.sc == null ? "–" : Math.round(d.v.sc)}</i>`).join("")}</span>` +
+        (P.n === 1 ? `<small>${esc(P.per[0].v.why)}</small>` : "") + `</span>` +
+        `<span class="rv2 lv-${P.lv}">${P.n > 1 ? P.good + "/" + P.n : P.avg == null ? "–" : Math.round(P.avg)}<small>${P.n > 1 ? "dies bons" : "/10"}</small></span></button>`; }).join("")
+      : `<p class="note">Cap zona a la vista. Tria «Totes» o allunya el mapa.</p>`);
+}
+$("rankBody").addEventListener("click", e => {
+  const s = e.target.closest("button[data-rs]"); if(s){ rankScope = s.dataset.rs; store.set("cem_rank_scope", rankScope); renderRank(); return; }
+  const r = e.target.closest("button[data-zone]"); if(r){ $("rankSheet").hidden = true; openZone(r.dataset.zone); }
+});
 
 /* ---------- RELLEU: lectura del model del terreny de l'ICGC (5 m, RGB) ---------- */
 // Cada rajola PNG codifica l'altitud: h = −10000 + (R·65536 + G·256 + B) · 0,1
