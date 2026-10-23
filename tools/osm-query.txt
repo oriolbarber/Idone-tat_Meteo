@@ -1,11 +1,9 @@
 [out:json][timeout:240];
 area["ISO3166-2"="ES-CT"]["admin_level"="4"]->.a;
 (
-  nwr["sport"="climbing"](area.a);
-  nwr["climbing"~"^(area|crag|boulder)$"](area.a);
-)->.all;
-(.all; - nwr.all["climbing"~"route"];)->.sites;
-(.sites; - nwr.sites["indoor"="yes"]; - nwr.sites["leisure"="sports_centre"]; - nwr.sites["building"];)->.out;
-node.out; out tags;
-way.out; out center tags;
-rel.out; out center;
+  nwr["sport"="climbing"]["climbing"!~"route"]["indoor"!="yes"]["leisure"!~"sports_centre|fitness_centre"]["building"!~"."](area.a);
+  nwr["climbing"~"^(area|crag)$"](area.a);
+)->.s;
+node.s; out;
+way.s; out center tags;
+rel.s; out center;
