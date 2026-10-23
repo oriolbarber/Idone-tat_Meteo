@@ -1,9 +1,10 @@
 [out:json][timeout:240];
 area["ISO3166-2"="ES-CT"]["admin_level"="4"]->.a;
 (
-  nwr["sport"="climbing"]["climbing"!~"route"]["indoor"!="yes"]["leisure"!~"sports_centre|fitness_centre"]["building"!~"."](area.a);
+  nwr["sport"="climbing"]["climbing"!~"route"]["indoor"!="yes"]["building"!~"."](area.a);
   nwr["climbing"~"^(area|crag)$"](area.a);
 )->.s;
 node.s; out;
 way.s; out center tags;
 rel.s; out center;
+node["place"~"^(town|village|hamlet)$"](area.a); out;

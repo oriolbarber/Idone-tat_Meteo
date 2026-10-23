@@ -1,0 +1,25 @@
+# Actualitza zones-osm.js amb els llocs d'escalada de Catalunya d'OpenStreetMap (cada dilluns i a mà des d'Actions).
+name: Zones d'OpenStreetMap
+on:
+  schedule: [{cron: "17 4 * * 1"}]
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: osm-zones, cancel-in-progress: false}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Baixa d'OpenStreetMap (Overpass)
+        run: bash tools/osm-raw.sh
+      - name: Construeix zones-osm.js
+        run: node tools/osm-build.mjs osm-raw.json | tee "$RUNNER_TEMP/n.txt"; echo "::notice::$(cat $RUNNER_TEMP/n.txt)"
+      - name: Desa els canvis
+        run: |
+          git add zones-osm.js
+          if git diff --cached --quiet; then echo "Sense canvis"; exit 0; fi
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git commit -qm "Zones d'OpenStreetMap actualitzades ($(cat $RUNNER_TEMP/n.txt))"
+          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin main && exit 0; sleep 10; done; exit 1
