@@ -60,6 +60,10 @@ h2{font-size:1.3em;margin:0;line-height:1.15}
 .ib[aria-pressed="true"],.ib[aria-expanded="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .t3d{font-size:.95em;letter-spacing:.02em}
 
+/* modalitat: dues icones petites; la triada, plena i amb vora; l'altra, apagada */
+.modsw{display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);flex:none}
+.modsw button{width:38px;height:38px;display:grid;place-items:center;border:2px solid transparent;border-radius:9px;background:transparent;color:var(--muted);opacity:.45;cursor:pointer;padding:0}
+.modsw button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--ink);opacity:1}
 .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px;flex-wrap:wrap}
 .top .seg{flex-wrap:nowrap}
 .top .seg button{padding:0 10px}

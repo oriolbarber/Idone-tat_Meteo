@@ -497,7 +497,7 @@ function renderDays(scroll = true){
 $("days").addEventListener("click", e => { const b = e.target.closest("button[data-day]"); if(!b) return; const k = b.dataset.day;
   if(selDays.length > 1 && selDays.includes(k)){ dayKey = k; renderAll(); } else setDays([k], k); });
 $("slotSeg").addEventListener("click", e => { const b = e.target.closest("button[data-slot]"); if(!b) return; slot = b.dataset.slot; store.set("cem_slot", slot); renderAll(); });
-$("modSeg").addEventListener("click", e => { const b = e.target.closest("button[data-mod]"); if(!b) return; mod = b.dataset.mod; store.set("cem_mod", mod); renderAll(); });
+$("modSeg").addEventListener("click", e => { const b = e.target.closest("button[data-mod]"); if(!b) return; mod = b.dataset.mod; store.set("cem_mod", mod); renderPanels(); renderAll(); });
 
 /* ---------- FITXA DE LA ZONA ---------- */
 function openZone(id){ selZone = id; $("calSheet").hidden = true; $("rankSheet").hidden = true; $("sheet").hidden = false; renderSheet(); const z = ZONES.find(z => z.id === id); if(z && map.getZoom() < 9) map.easeTo({center:[z.lon, z.lat], zoom: 10}); }
@@ -804,6 +804,7 @@ function renderPanels(){
   const pr = (sel, attr, val) => document.querySelectorAll(sel).forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(val))));
   pr("#themeSeg button", "theme", theme); pr("#sizeSeg button", "size", size); pr("#cbSeg button", "cb", cb);
   pr("#roleSeg2 button", "role", role); pr("#cloSeg button", "clo", clo); pr("#modSeg button", "mod", mod);
+  $("sub").textContent = mod === "classica" ? "Clàssica" : "Esportiva";
   $("peekAsp").textContent = {auto:"Tema automàtic", dark:"Tema fosc", light:"Tema clar"}[theme] + " · lletra " + (size === "big" ? "gran" : "petita") + (cb === "1" ? " · alt contrast" : "");
   $("peekLl").textContent = (role === "climb" ? "Escalant" : "Assegurant") + " · roba " + CLO_TXT[clo];
   $("peekPar").textContent = userWalls.length ? userWalls.length + " traçades en aquest mòbil" : "Cap paret traçada";

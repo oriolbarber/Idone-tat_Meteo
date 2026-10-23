@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 </head>
 <body>
 
@@ -32,8 +32,11 @@
 <header class="top">
   <img src="icons/logo.svg?v=1" alt="" width="38" height="38">
   <div class="t"><b>CEM</b><span id="sub">Idoneïtat</span></div>
-  <div class="seg" role="group" aria-label="Modalitat" id="modSeg">
-    <button type="button" data-mod="esportiva">Esportiva</button><button type="button" data-mod="classica">Clàssica</button>
+  <div class="modsw" role="group" aria-label="Modalitat" id="modSeg">
+    <button type="button" data-mod="esportiva" aria-label="Esportiva" title="Esportiva">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="7.5" rx="3.75"/><path d="M12 9.5v4.5" stroke-width="3"/><rect x="7" y="14" width="10" height="8" rx="4"/></svg></button>
+    <button type="button" data-mod="classica" aria-label="Clàssica" title="Clàssica">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 11V5.5a2 2 0 0 1 4 0V11"/><path d="M7 11h10l-2.3 10H9.3z" fill="currentColor"/></svg></button>
   </div>
   <button class="ib" id="menuBtn" type="button" aria-label="Menú" aria-haspopup="true">
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="19" r="2.2" fill="currentColor"/></svg>
@@ -243,7 +246,7 @@
 
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 <script src="cloud.js?v=2"></script>
 <script src="restr.js?v=1"></script>
 </body>
