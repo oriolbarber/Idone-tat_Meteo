@@ -19,7 +19,12 @@ const CARD = ["N","NE","E","SE","S","SO","O","NO"];
 const cardOf = az => CARD[Math.round(((az % 360) + 360) % 360 / 45) % 8];
 // data local (Europe/Madrid) d'un instant: {key:"AAAA-MM-DD", h:0–23}
 const fmtTZ = new Intl.DateTimeFormat("en-CA", {timeZone:TZ, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", hourCycle:"h23"});
+const LOCM = new Map();
 function localOf(ms){
+  const c = LOCM.get(ms); if(c) return c;
+  const r = localOf0(ms); if(LOCM.size < 5000) LOCM.set(ms, r); return r;
+}
+function localOf0(ms){
   const p = {}; fmtTZ.formatToParts(new Date(ms)).forEach(x => p[x.type] = x.value);
   return {key:`${p.year}-${p.month}-${p.day}`, h:+p.hour};
 }
@@ -45,6 +50,39 @@ let dayKey = null;                                        // dia enfocat (AAAA-M
 let selDays = store.get("cem_days", []);                  // dies de la sortida (un o diversos, no cal que siguin seguits)
 let selZone = null;                                       // zona oberta a la fitxa
 let DATA = null;                                          // previsió: {zoneId: {t:[ms], key:[…], h:[…], …}, sun:{zoneId:{key:{rise,set}}}}
+
+/* ---------- catàleg: zones de prova (zones.js) + zones i sectors d'OpenStreetMap (zones-osm.js) ---------- */
+// Una zona d'OSM a menys de 4 km d'una zona del catàleg s'hi afegeix com a sectors (no es duplica).
+(function(){
+  ZONES.forEach(z => z.sectors = z.sectors || []);
+  if(typeof OSM_ZONES === "undefined") return;
+  OSM_ZONES.forEach(o => {
+    const near = ZONES.find(z => z.src !== "osm" && distM([z.lon, z.lat], [o.lon, o.lat]) < 4000);
+    if(near){ near.sectors.push(...o.sectors); return; }
+    ZONES.push(Object.assign({}, o, {rock: o.rock || "calcaria", rockGuess: !o.rock, alt: o.alt ?? 500, walls: []}));
+  });
+})();
+// Preferits (en aquest mòbil). «Només preferits» mostra i baixa la previsió només d'aquestes zones.
+let favs = new Set(store.get("cem_favs", []));
+let onlyFav = store.get("cem_onlyfav", false);
+const isFav = z => favs.has(z.id);
+const wanted = () => onlyFav && favs.size ? ZONES.filter(isFav) : ZONES;
+// Zones que es mostren (mapa, barra de dies, «On anar»): les volgudes que tenen previsió
+function shown(){ const zs = wanted(); return DATA ? zs.filter(z => DATA.zones[z.id]) : []; }
+function toggleFav(id){
+  if(favs.has(id)) favs.delete(id); else favs.add(id);
+  store.set("cem_favs", [...favs]); renderFavUI(); renderAll();
+}
+function setOnlyFav(v){
+  onlyFav = v; store.set("cem_onlyfav", v); renderFavUI();
+  if(DATA && wanted().some(z => !DATA.zones[z.id])) load(); else renderAll();
+}
+function renderFavUI(){
+  const c = $("lyFav"); if(c) c.checked = onlyFav;
+  const n = $("favNote"); if(n){ n.hidden = !(onlyFav && !favs.size); }
+  const b = $("zFav"); if(b && selZone){ const on = favs.has(selZone);
+    b.setAttribute("aria-pressed", String(on)); b.setAttribute("aria-label", on ? "Treu dels preferits" : "Afegeix als preferits"); }
+}
 
 /* ---------- posició del sol (fórmules de SunCalc) ---------- */
 function sunPos(ms, lat, lon){
@@ -89,17 +127,16 @@ const HV = ["temperature_2m","relative_humidity_2m","dew_point_2m","precipitatio
 const SHORT = {temperature_2m:"T", relative_humidity_2m:"RH", dew_point_2m:"Td", precipitation:"P", precipitation_probability:"PP",
   weather_code:"WC", wind_speed_10m:"W", wind_gusts_10m:"G", wind_direction_10m:"WD", shortwave_radiation_instant:"GHI",
   direct_normal_irradiance_instant:"DNI", diffuse_radiation_instant:"DIF", cape:"CAPE"};
-function omURL(){
-  return "https://api.open-meteo.com/v1/forecast?latitude=" + ZONES.map(z => z.lat).join(",") +
-    "&longitude=" + ZONES.map(z => z.lon).join(",") + "&elevation=" + ZONES.map(z => z.alt).join(",") +
+function omURL(zs){
+  return "https://api.open-meteo.com/v1/forecast?latitude=" + zs.map(z => z.lat).join(",") +
+    "&longitude=" + zs.map(z => z.lon).join(",") + "&elevation=" + zs.map(z => z.alt).join(",") +
     "&hourly=" + HV.join(",") + "&daily=sunrise,sunset&timeformat=unixtime&timezone=" + encodeURIComponent(TZ) +
     "&past_days=3&forecast_days=16&wind_speed_unit=kmh";
 }
-function parseOM(arr){
+function parseOM(arr, zs, out){
   if(!Array.isArray(arr)) arr = [arr];
-  const out = {zones:{}, at:Date.now()};
   arr.forEach((r, i) => {
-    const z = ZONES[i], H = r.hourly, o = {t: H.time.map(s => s * 1000)};
+    const z = zs[i], H = r.hourly, o = {t: H.time.map(s => s * 1000)};
     o.loc = o.t.map(localOf);
     HV.forEach(k => o[SHORT[k]] = H[k] || []);
     o.sun = {};
@@ -108,21 +145,39 @@ function parseOM(arr){
   });
   return out;
 }
+// Còpia per obrir sense connexió: totes les zones si hi caben; si no, només les preferides
+function saveFC(){
+  const put = zs => { try{ localStorage.setItem("cem_fc", JSON.stringify({at: DATA.at,
+    zones: Object.fromEntries(Object.entries(zs).map(([k, o]) => { const {loc, ...rest} = o; return [k, rest]; }))})); return true; }catch(e){ return false; } };
+  if(put(DATA.zones)) return;
+  if(!put(Object.fromEntries(Object.entries(DATA.zones).filter(([k]) => favs.has(k))))) try{ localStorage.removeItem("cem_fc"); }catch(e){}
+}
+function readFC(){
+  const d = store.get("cem_fc"); if(!d || !d.zones) return null;
+  Object.values(d.zones).forEach(o => o.loc = o.t.map(localOf)); return d;
+}
+let loading = false;
 async function load(){
-  msg("Carregant la previsió…");
+  if(loading) return; loading = true;
+  const zs = wanted(), out = {zones:{}, at:Date.now()};
+  msg(zs.length > 50 ? `Carregant la previsió de ${zs.length} zones…` : "Carregant la previsió…");
   try{
-    const r = await fetch(omURL());
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    DATA = parseOM(await r.json());
-    store.set("cem_fc", DATA);
+    // per lots de 50 llocs (adreça curta i resposta raonable)
+    for(let i = 0; i < zs.length; i += 50){
+      const b = zs.slice(i, i + 50), r = await fetch(omURL(b));
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      parseOM(await r.json(), b, out);
+    }
+    DATA = out; cache.clear(); saveFC();
     msg(null);
   }catch(e){
-    const old = store.get("cem_fc");
-    if(old && old.zones && ZONES.every(z => old.zones[z.id])){
-      DATA = old;
-      msg("Sense connexió: previsió de fa " + ago(old.at) + ".", true);
-    }else{ msg("No s'ha pogut carregar la previsió. Torna-ho a provar amb connexió.", true); return; }
+    const old = readFC();
+    if(old && zs.some(z => old.zones[z.id])){
+      DATA = old; cache.clear();
+      msg("Sense connexió: previsió de fa " + ago(old.at) + (zs.every(z => old.zones[z.id]) ? "." : " (només les zones desades)."), true);
+    }else{ loading = false; msg("No s'ha pogut carregar la previsió. Torna-ho a provar amb connexió.", true); return; }
   }
+  loading = false;
   const av = daysAvail();
   selDays = selDays.filter(k => av.includes(k));
   if(!selDays.length) selDays = [localOf(Date.now()).key];
@@ -133,7 +188,7 @@ async function load(){
 function ago(ms){ const m = Math.round((Date.now() - ms) / 60000); return m < 60 ? m + " min" : m < 1440 ? Math.round(m / 60) + " h" : Math.round(m / 1440) + " dies"; }
 function daysAvail(){
   if(!DATA) return [];
-  const o = DATA.zones[ZONES[0].id], today = localOf(Date.now()).key, s = new Set();
+  const o = Object.values(DATA.zones)[0], today = localOf(Date.now()).key, s = new Set();
   o.loc.forEach(l => { if(l.key >= today) s.add(l.key); });
   return [...s].sort();
 }
@@ -368,6 +423,13 @@ map.on("load", () => {
     layout:{"icon-image":"wall-arrow", "icon-rotate":["get", "az"], "icon-rotation-alignment":"map", "icon-allow-overlap":true, "icon-size":["interpolate", ["linear"], ["zoom"], 12, 0.6, 17, 1.1]}});
   map.addLayer({id:"draw-line", type:"line", source:"draw", filter:["==", "$type", "LineString"], paint:{"line-color":"#ffb000", "line-width":4, "line-dasharray":[2, 1]}});
   map.addLayer({id:"draw-pt", type:"circle", source:"draw", filter:["==", "$type", "Point"], paint:{"circle-radius":7, "circle-color":"#ffb000", "circle-stroke-color":"#000", "circle-stroke-width":2}});
+  // sectors d'OpenStreetMap: punts blancs des del zoom 11 (els noms, des del 13)
+  map.addSource("sectors", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addLayer({id:"sector-pt", type:"circle", source:"sectors", minzoom:11,
+    paint:{"circle-radius":["interpolate", ["linear"], ["zoom"], 11, 4, 16, 8], "circle-color":"#ffffff", "circle-stroke-color":"#1b1f18", "circle-stroke-width":2}});
+  map.on("click", "sector-pt", e => { if(drawing) return; const p = e.features[0].properties; selSector = p.id; openZone(p.zone); });
+  map.on("mouseenter", "sector-pt", () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", "sector-pt", () => map.getCanvas().style.cursor = "");
   map.on("click", "wall-line", e => { if(drawing) return; const f = e.features[0]; const z = ZONES.find(z => z.id === f.properties.zone); if(z) openZone(z.id); });
   applyBase(); applyLayers(); renderWalls(); renderMarkers();
   if(t3d) apply3D();
@@ -386,7 +448,7 @@ const markers = {}, clusters = {};
 let markersOnScreen = {}, mkVer = 0;
 const LV_KEYS = ["ok", "mid", "no", "na"];
 function zonesGeoJSON(){
-  return {type:"FeatureCollection", features: ZONES.map(z => {
+  return {type:"FeatureCollection", features: shown().map(z => {
     const v = frSlot(zoneEval(z), dayKey), mid = v.rows[Math.floor(v.rows.length / 2)];
     const P = selDays.length > 1 ? periodEval(z) : null;
     // «Dia» amb un sol dia: rodona partida matí | tarda (la mitjana amagava una franja dolenta)
@@ -397,9 +459,34 @@ function zonesGeoJSON(){
         why: P ? `${P.good} de ${P.n} dies bons` : v.why, wd:mid ? mid.wd : -1, wkmh:mid ? Math.round(mid.wkmh) : -1}};
   })};
 }
+function renderSectors(){
+  if(!map.getSource("sectors")) return;
+  const f = [];
+  shown().forEach(z => (z.sectors || []).forEach(s => f.push({type:"Feature", properties:{id:s.id, zone:z.id, name:s.name || ""}, geometry:{type:"Point", coordinates:[s.lon, s.lat]}})));
+  map.getSource("sectors").setData({type:"FeatureCollection", features:f});
+  sectorLabels();
+}
+// Noms dels sectors (etiquetes HTML: l'estil del mapa no porta tipus de lletra), només de prop i fins a 60
+const secLbl = {}, secOn = new Set();
+function sectorLabels(){
+  const on = {}, b = map.getBounds();
+  if(map.getZoom() >= 13){
+    let n = 0;
+    for(const z of shown()) for(const s of (z.sectors || [])){
+      if(!s.name || n >= 60 || !b.contains([s.lon, s.lat])) continue;
+      n++; let m = secLbl[s.id];
+      if(!m){ const el = document.createElement("div"); el.className = "seclbl"; el.textContent = s.name;
+        m = secLbl[s.id] = new maplibregl.Marker({element: el, anchor: "left", offset: [9, 0]}).setLngLat([s.lon, s.lat]); }
+      on[s.id] = m;
+    }
+  }
+  for(const id in secLbl){ if(on[id] && !secOn.has(id)){ secLbl[id].addTo(map); secOn.add(id); } else if(!on[id] && secOn.has(id)){ secLbl[id].remove(); secOn.delete(id); } }
+}
+map.on("moveend", () => { if(DATA) sectorLabels(); });
 function renderMarkers(){
   if(!DATA || !map.getSource("zones")) return;
   mkVer++; map.getSource("zones").setData(zonesGeoJSON());
+  renderSectors();
 }
 function zoneMarkerHTML(p){
   const z = ZONES.find(z => z.id === p.id), lvl = p.lv;
@@ -475,7 +562,7 @@ function renderWalls(){
 // Es recalcula en moure o fer zoom (moveend). Sense cap zona a la vista, gris.
 function visibleZones(){
   const b = map.getBounds();
-  return ZONES.filter(z => b.contains([z.lon, z.lat]));
+  return shown().filter(z => b.contains([z.lon, z.lat]));
 }
 function avgSlot(zs, k, s){
   const sc = zs.map(z => frSlot(zoneEval(z), k, s).sc).filter(v => v != null);
@@ -514,9 +601,10 @@ function openZone(id){
   selZone = id; $("calSheet").hidden = true; $("rankSheet").hidden = true; $("layerPanel").hidden = true;
   if(!(history.state && history.state.cemSheet)) history.pushState({cemSheet:1}, "");
   $("sheet").hidden = false; $("zBody").scrollTop = 0; renderSheet();
+  if(selSector){ const li = $("zBody").querySelector(".seclist li.sel"); if(li) li.scrollIntoView({block:"center"}); }
   const z = ZONES.find(z => z.id === id); if(z && map.getZoom() < 9) map.easeTo({center:[z.lon, z.lat], zoom: 10});
 }
-function closeZone(){ selZone = null; $("sheet").hidden = true; $("infoSheet").hidden = true; }
+function closeZone(){ selZone = null; selSector = null; $("sheet").hidden = true; $("infoSheet").hidden = true; }
 $("sheetClose").addEventListener("click", () => { if(history.state && history.state.cemSheet) history.back(); else closeZone(); });
 addEventListener("popstate", () => { if(!$("sheet").hidden) closeZone(); });
 const INF = k => `<button class="inf" type="button" data-info="${k}" aria-label="Més informació"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg></button>`;
@@ -527,15 +615,31 @@ function feelLv(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 
 function feelTxt(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 ? "Molt fred" : f < lo ? "Fresc" : f > hi + 6 ? "Molta calor" : f > hi ? "Calor" : "Agradable"; }
 function arrowSVG(az){ return `<span class="arrow" title="Mira al ${cardOf(az)}"><svg width="18" height="18" viewBox="0 0 24 24" style="transform:rotate(${az}deg)" aria-hidden="true"><path d="M12 3l6 14-6-3-6 3z" fill="currentColor"/></svg></span>`; }
 
+// Sectors de la zona (OpenStreetMap): nom i coordenades, amb «Copia» i l'app de mapes del mòbil
+function mapHrefOf(lat, lon, name){
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return isIOS ? `https://maps.apple.com/?ll=${lat},${lon}&q=${encodeURIComponent(name)}` : /Android/.test(navigator.userAgent) ? `geo:${lat},${lon}?q=${lat},${lon}(${encodeURIComponent(name)})` : "";
+}
+function sectorsHTML(z){
+  const ss = z.sectors || []; if(!ss.length) return "";
+  const open = ss.length <= 8 || ss.some(s => s.id === selSector);
+  return `<details class="more secs"${open ? " open" : ""}><summary>Sectors (${ss.length})${INF("osm")}</summary><ul class="seclist">` +
+    ss.map(s => { const ll = `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`, nm = s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), href = mapHrefOf(s.lat, s.lon, nm);
+      return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
+        `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (href ? `<a class="btn sm" href="${href}">Mapa</a>` : "") + `</li>`; }).join("") +
+    `</ul><p class="note">Sectors d'OpenStreetMap (© col·laboradors d'OSM, ODbL). Si en falta algun o està mal situat, es pot corregir a OpenStreetMap.</p></details>`;
+}
+let selSector = null;
 function renderSheet(){
   if(!selZone || !DATA) return;
   const z = ZONES.find(z => z.id === selZone), ev = zoneEval(z), o = ev.o;
   const ws = wallsOf(z);
-  $("zName").textContent = z.name;
+  $("zName").textContent = z.name; renderFavUI();
   // subtítol en una línia: roca · altitud · icones de modalitat; «dades de prova» com a etiqueta
-  $("zMeta").innerHTML = `<span>${ROCKS[z.rock].name} · ${z.alt} m</span>` +
+  $("zMeta").innerHTML = `<span>${ROCKS[z.rock].name}${z.rockGuess ? "?" : ""} · ${z.alt} m</span>` +
     `<span title="${z.mods.map(m => m === "classica" ? "Clàssica" : "Esportiva").join(" i ")}">${z.mods.map(m => MOD_IC[m]).join(" ")}</span>` +
-    (z.src === "provisional" ? `<span class="tag">Dades de prova${INF("prova")}</span>` : "");
+    (z.src === "provisional" ? `<span class="tag">Dades de prova${INF("prova")}</span>` : "") +
+    (z.src === "osm" ? `<span class="tag">OpenStreetMap${INF("osm")}</span>` : "");
   // dies dins la fitxa: notes d'aquesta zona (matí | tarda); substitueix la barra de dies, que queda tapada
   const zc = v => `<i class="lv-${v.lv}">${v.sc == null ? "–" : Math.round(v.sc)}</i>`;
   $("zDays").innerHTML = daysAvail().map(k => { const d = new Date(k + "T12:00:00"), a = zoneSlot(ev, k, "am"), p = zoneSlot(ev, k, "pm");
@@ -588,6 +692,7 @@ function renderSheet(){
   h += `<div class="zloc"><span>📍 ${ll}${z.src === "provisional" ? " · aproximades" : ""}</span>` +
     `<button class="ib" type="button" data-copy="${ll}" aria-label="Copia les coordenades"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg></button>` +
     (mapHref ? `<a class="btn sm pri" href="${mapHref}">Com arribar</a>` : "") + `</div>`;
+  h += sectorsHTML(z);
   if(window.CEM_R) h += CEM_R.sheetHTML(z);
   // parets
   h += `<div class="walls">`;
@@ -687,22 +792,23 @@ $("calBody").addEventListener("click", e => {
 let rankScope = store.get("cem_rank_scope", "all");
 function renderRank(){
   if(!DATA) return;
-  const zs = rankScope === "vis" ? visibleZones() : ZONES;
+  const zs = rankScope === "vis" ? visibleZones() : rankScope === "fav" ? shown().filter(isFav) : shown();
   // primer les zones amb la modalitat; les tancades o amb restricció confirmada de tota la zona, al final
   const list = zs.map(z => ({z, P: periodEval(z), has: z.mods.includes(mod), F: window.CEM_R ? CEM_R.flags(z) : {}}))
     .sort((a, b) => (b.has - a.has) || (!!a.F.full - !!b.F.full) || (b.P.good - a.P.good) || ((b.P.avg ?? -1) - (a.P.avg ?? -1)));
   $("rankBody").innerHTML =
     `<div class="row rk-top"><span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()} · ${mod === "classica" ? "clàssica" : "esportiva"}</span>` +
     `<div class="seg" role="group" aria-label="Quines zones" id="rankSeg"><button type="button" data-rs="all" aria-pressed="${rankScope === "all"}">Totes</button>` +
-    `<button type="button" data-rs="vis" aria-pressed="${rankScope === "vis"}">A la vista</button></div></div>` +
+    `<button type="button" data-rs="vis" aria-pressed="${rankScope === "vis"}">A la vista</button>` +
+    `<button type="button" data-rs="fav" aria-pressed="${rankScope === "fav"}" aria-label="Preferides">★</button></div></div>` +
     (list.length ? list.map((x, i) => { const P = x.P, z = x.z;
       return `<button type="button" class="rk${x.has ? "" : " off"}" data-zone="${z.id}"><span class="rn num">${i + 1}</span>` +
-        `<span class="rm"><b>${esc(z.name)}</b><small>${ROCKS[z.rock].name} · ${z.alt} m${x.has ? "" : " · sense " + (mod === "classica" ? "clàssica" : "esportiva")}</small>` +
+        `<span class="rm"><b>${isFav(z) ? '<span class="star" aria-label="Preferida">★</span> ' : ""}${esc(z.name)}</b><small>${ROCKS[z.rock].name} · ${z.alt} m${x.has ? "" : " · sense " + (mod === "classica" ? "clàssica" : "esportiva")}</small>` +
         (x.F.ic ? `<span class="rflag${x.F.full ? " full" : x.F.pend ? " pend" : ""}">${x.F.ic} ${esc(x.F.txt)}</span>` : "") + `` +
         `<span class="rd">${P.per.map(d => `<i class="lv-${d.v.lv}" title="${dayLbl(d.k, true)}: ${esc(d.v.why)}">${dayLbl(d.k)} ${d.v.sc == null ? "–" : Math.round(d.v.sc)}</i>`).join("")}</span>` +
         (P.n === 1 ? `<small>${esc(P.per[0].v.why)}</small>` : "") + `</span>` +
         `<span class="rv2 lv-${P.lv}">${P.n > 1 ? P.good + "/" + P.n : P.avg == null ? "–" : Math.round(P.avg)}<small>${P.n > 1 ? "dies bons" : "/10"}</small></span></button>`; }).join("")
-      : `<p class="note">Cap zona a la vista. Tria «Totes» o allunya el mapa.</p>`);
+      : `<p class="note">${rankScope === "fav" ? "Encara no tens zones preferides: obre una zona i toca l'estrella ☆." : "Cap zona a la vista. Tria «Totes» o allunya el mapa."}</p>`);
 }
 $("rankBody").addEventListener("click", e => {
   const s = e.target.closest("button[data-rs]"); if(s){ rankScope = s.dataset.rs; store.set("cem_rank_scope", rankScope); renderRank(); return; }
@@ -743,6 +849,10 @@ function infoContent(k){
       <ul><li><b>Molla:</b> no s'hi pot escalar (nota vermella).</li><li><b>Humida:</b> s'hi pot anar, però resta punts.</li><li><b>Seca:</b> sense aigua retinguda.</li></ul>
       <p>Cada roca reté l'aigua diferent. De més lenta a més ràpida d'assecar-se: ${R.join(", ")}.</p>
       <p>Els mil·límetres són la pluja de les 72 hores anteriors.</p>`],
+    osm: ["Zona d'OpenStreetMap", `
+      <p>Les zones i els sectors surten d'OpenStreetMap, el mapa obert que fan voluntaris (© col·laboradors d'OpenStreetMap, llicència ODbL). S'actualitzen cada setmana.</p>
+      <p>L'app agrupa en una zona els sectors que són a menys d'1,5 km i li posa el nom de l'àrea d'escalada o del poble més proper. El punt de la zona és el centre dels seus sectors i la previsió és la d'aquest punt.</p>
+      <p>Quan OSM no diu el tipus de roca, l'app fa servir calcària i hi posa un interrogant.</p>`],
     prova: ["Dades de prova", `
       <p>Aquesta zona és del catàleg provisional: coordenades i altitud aproximades (centre de la zona) i encara sense parets revisades.</p>
       <p>El veredicte és per a tota la zona. Traça una paret per tenir-ne el sol i l'ombra reals.</p>`]
@@ -944,6 +1054,30 @@ function slideConfirm(el, label, onDone){
 }
 
 /* ---------- eines del mapa ---------- */
+// Tocar el mapa (fora dels menús) tanca les capes, el calendari, «On anar» i les fitxes d'informació
+function closeFloating(){
+  $("layerPanel").hidden = true; $("layerBtn").setAttribute("aria-expanded", "false");
+  ["calSheet", "rankSheet", "infoSheet"].forEach(x => $(x) && ($(x).hidden = true));
+}
+map.on("click", e => {
+  if(drawing) return;
+  const ls = ["sector-pt", "wall-line"].filter(l => map.getLayer(l));
+  if(ls.length && map.queryRenderedFeatures(e.point, {layers: ls}).length) return;
+  closeFloating();
+});
+// Menú lateral: tocar l'ombra el tanca. Esc tanca el que hi hagi a sobre.
+const anyPanel = () => [...document.querySelectorAll(".panel")].some(p => !p.hidden);
+{ const mo = new MutationObserver(() => { const h = !anyPanel(); if($("scrim").hidden !== h) $("scrim").hidden = h; });
+  document.querySelectorAll(".panel").forEach(p => mo.observe(p, {attributes:true, attributeFilter:["hidden"]})); }
+$("scrim").addEventListener("click", () => document.querySelectorAll(".panel").forEach(x => x.hidden = true));
+addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if(anyPanel()) document.querySelectorAll(".panel").forEach(x => x.hidden = true);
+  else if(["calSheet", "rankSheet", "infoSheet"].some(x => $(x) && !$(x).hidden) || !$("layerPanel").hidden) closeFloating();
+  else if(!$("sheet").hidden) $("sheetClose").click();
+});
+$("lyFav").addEventListener("change", e => setOnlyFav(e.target.checked));
+$("zFav").addEventListener("click", () => { if(selZone) toggleFav(selZone); });
 $("layerBtn").addEventListener("click", () => { const p = $("layerPanel"); p.hidden = !p.hidden; $("layerBtn").setAttribute("aria-expanded", String(!p.hidden)); });
 $("baseSeg").addEventListener("click", e => { const b = e.target.closest("button[data-base]"); if(!b) return; base = b.dataset.base; store.set("cem_base", base); applyBase(); });
 [["lySlope", "slope"], ["lyRadar", "radar"], ["lyWind", "wind"], ["lyWalls", "walls"]].forEach(([id, k]) =>
@@ -965,4 +1099,4 @@ addEventListener("online", load);
 document.addEventListener("visibilitychange", () => { if(!document.hidden && DATA && Date.now() - DATA.at > 3600e3) load(); });
 
 /* ---------- inici ---------- */
-applyLook(); renderPanels(); load();
+applyLook(); renderPanels(); renderFavUI(); load();

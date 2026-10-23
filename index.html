@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=8">
+<link rel="stylesheet" href="app.css?v=9">
 </head>
 <body>
 
@@ -66,7 +66,9 @@
     <label class="chk"><input type="checkbox" id="lyRadar"> Radar de pluja</label>
     <label class="chk"><input type="checkbox" id="lyWind" checked> Vent a les zones</label>
     <label class="chk"><input type="checkbox" id="lyWalls" checked> Parets</label>
+    <label class="chk"><input type="checkbox" id="lyFav"> Només les preferides ★</label>
   </div>
+  <p class="note" id="favNote" hidden>Encara no tens zones preferides: obre una zona i toca l'estrella ☆. Mentrestant es veuen totes.</p>
   <p class="note" id="radarNote" hidden></p>
   <button class="lnk" type="button" data-info="mapa">Llegenda i com es llegeix el mapa</button>
 </div>
@@ -120,11 +122,14 @@
     <button class="ib flat" type="button" id="sheetClose" aria-label="Torna al mapa">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="zt"><h2 id="zName"></h2><div class="zmeta" id="zMeta"></div></div>
+    <button class="ib flat fav" type="button" id="zFav" aria-pressed="false" aria-label="Afegeix als preferits">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg></button>
   </div>
   <div class="zdays" id="zDays" role="group" aria-label="Dia de la fitxa"></div>
   <div class="sh-body" id="zBody"></div>
 </section>
 
+<div class="scrim" id="scrim" hidden></div>
 <!-- ============ MENÚ ⋮ (estil WhatsApp) ============ -->
 <div class="panel" id="menu" hidden>
   <div class="pbar"><button class="ib flat" type="button" data-close aria-label="Enrere">
@@ -247,7 +252,7 @@
     <p><b>Radar:</b> RainViewer.</p>
     <p><b>Risc d'incendi:</b> Pla Alfa dels Agents Rurals (Generalitat de Catalunya), per municipi, avui i demà, i tancaments d'espais naturals.</p>
     <p><b>Restriccions d'escalada:</b> les aporta la comunitat amb l'enllaç a la font oficial (parcs naturals, Diputació, Generalitat). Comprova-les sempre a la font: l'app no en garanteix la vigència.</p>
-    <p><b>Zones i parets:</b> catàleg de CEM, obert sota la llicència ODbL 1.0; la base de les zones serà OpenStreetMap (© col·laboradors d'OpenStreetMap, ODbL). Les parets les aporta la comunitat i les revisen persones voluntàries.</p>
+    <p><b>Zones i parets:</b> catàleg de CEM, obert sota la llicència ODbL 1.0. Les zones i els sectors surten d'OpenStreetMap (© col·laboradors d'OpenStreetMap, ODbL) i s'actualitzen cada setmana. Les parets les aporta la comunitat i les revisen persones voluntàries.</p>
     <p><b>Com es calcula:</b> la pluja de les últimes 72 h i el secat de la roca (segons el tipus de roca, el sol a la paret, el vent i la humitat); la tempesta; el confort (sensació tèrmica amb el sol a la paret, el vent, la humitat, la roba i si escales o assegures); l'adherència (roca massa calenta, freda o humida) i el vent màxim de la modalitat.</p>
     <p><b>Sempre vermell:</b> roca molla, pluja o tempesta prevista a la franja.</p>
   </div>
@@ -255,7 +260,8 @@
 
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
-<script src="app.js?v=8"></script>
+<script src="zones-osm.js?v=1"></script>
+<script src="app.js?v=9"></script>
 <script src="cloud.js?v=2"></script>
 <script src="restr.js?v=1"></script>
 </body>

@@ -49,9 +49,11 @@ const used = new Map();
 const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 let zones = groups.map(g => {
   const lat = g.reduce((a, s) => a + s.lat, 0) / g.length, lon = g.reduce((a, s) => a + s.lon, 0) / g.length, c = {lat, lon};
-  // nom: àrea d'OSM (relació o a menys de 3 km), si no el poble més proper (fins a 8 km), si no el primer sector amb nom
+  // nom: àrea d'OSM (relació o a menys de 3 km), el sector si és l'únic, el poble més proper (fins a 8 km) o el primer sector amb nom
   let name = g.map(s => memberOf.get(s.osm)).find(Boolean);
   if(!name){ const a = areas.filter(a => dist(a, c) < 3000).sort((x, y) => dist(x, c) - dist(y, c))[0]; if(a) name = a.name; }
+  // un sol sector amb nom: la zona es diu com el sector (p. ex. «Oliana»)
+  if(!name && g.length === 1 && g[0].name) name = g[0].name;
   if(!name){ const p = places.filter(p => p.name && dist(p, c) < 8000).sort((x, y) => dist(x, c) - dist(y, c))[0]; if(p) name = p.name; }
   if(!name) name = (g.find(s => s.name) || {}).name || "Zona sense nom";
   const n = (used.get(name) || 0) + 1; used.set(name, n);

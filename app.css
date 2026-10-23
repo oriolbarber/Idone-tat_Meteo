@@ -350,3 +350,22 @@ a.btn.pri{color:var(--on-accent)}
 .zdays button.insel{outline:2px solid var(--accent);outline-offset:-2px}
 .tag .inf{width:22px;height:22px;color:var(--ink)}
 .layer-panel .lnk{align-self:flex-start}
+
+/* preferits i sectors (OpenStreetMap) */
+.zh .fav{margin-left:auto;color:var(--muted)}
+.zh .fav svg{fill:none}
+.zh .fav[aria-pressed="true"]{color:#e0a100}
+.zh .fav[aria-pressed="true"] svg{fill:currentColor}
+.star{color:#e0a100}
+.secs summary .inf{margin-left:6px}
+.seclist{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column}
+.seclist li{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--line)}
+.seclist li.sel{background:var(--surface);border-radius:10px;padding:6px;outline:2px solid var(--accent)}
+.seclist .sn{display:flex;flex-direction:column;margin-right:auto;min-width:0}
+.seclist .sn b{overflow:hidden;text-overflow:ellipsis}
+.seclist small{color:var(--muted);font-size:.8em}
+.seclbl{pointer-events:none;font-size:12px;font-weight:700;color:#1b1f18;background:rgba(255,255,255,.85);padding:1px 5px;border-radius:6px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+
+/* menú lateral: deixa veure el mapa i tocar fora el tanca */
+.scrim{position:fixed;inset:0;z-index:49;background:rgba(0,0,0,.38)}
+.panel{left:auto;width:min(440px, calc(100% - 52px));box-shadow:-8px 0 24px rgba(0,0,0,.25)}

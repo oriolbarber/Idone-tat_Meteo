@@ -15,6 +15,9 @@ Pla complet: document «CEM — transferència de coneixement des d'Ocata Vent»
 
 ## Fitxers
 - `zones.js`: catàleg de zones (de prova, coordenades aproximades) i tipus de roca.
+- `zones-osm.js`: GENERAT (no editar). Zones i sectors de Catalunya d'OpenStreetMap: `.github/workflows/osm-zones.yml` (dilluns i a mà) → `tools/osm-raw.sh` (Overpass, consulta `tools/osm-query.txt`) → `tools/osm-build.mjs` (treu vies ferrades i rocòdroms, agrupa sectors a < 1,5 km, nom = àrea OSM / sector únic / poble més proper, altitud d'Open-Meteo). A `app.js` una zona OSM a < 4 km d'una de `zones.js` s'hi afegeix com a sectors. Roca desconeguda = calcària amb «?» (`rockGuess`).
+- Preferits (`cem_favs`, en aquest mòbil) i «Només les preferides» (`cem_onlyfav`, capes): mostra i baixa la previsió només d'aquestes. La previsió es baixa per lots de 50; la còpia sense connexió desa totes les zones si hi caben, si no només les preferides.
+- Tocar el mapa tanca capes, calendari, «On anar» i informació; el menú ⋮ és un calaix lateral i tocar l'ombra el tanca; Esc tanca el que hi ha a sobre.
 - `app.js`: mapa (ICGC), previsió (Open-Meteo), model de veredicte (secat, confort Steadman + escalant/assegurant + roba, adherència, vent), traçat de parets amb orientació i horitzó del relleu de 5 m de l'ICGC, zones agrupades amb anell de %. Barra de dies = mitjana de les zones a la vista (matí | tarda), es recalcula a `moveend`. Dies de la sortida (`selDays`, un o diversos, no cal que siguin seguits; `dayKey` = dia enfocat) triats a la barra o al calendari (`#calSheet`); franja Matí | Tarda | Dia (`frSlot`, «dia» = mitjana i no pot ser verd si una franja està bloquejada); període = «N de M dies bons» (`periodEval`, bo = verd ≥ 7); rànquing «On anar» (`#rankSheet`, totes o a la vista). Dies ≥ 6 amb vora discontínua (orientatiu).
 - `cloud.js`: comptes (correu i contrasenya + enllaç; Google no activat), perfil `usuaris/{uid}`, propostes `propostes/{id}` (correu confirmat + llicència ODbL 1.0), revisió (admin, `rol: "revisor"` o `premium`), catàleg aprovat `parets/{id}` llegit amb l'API REST pública (sense carregar Firebase).
 - `restr.js`: restriccions de la comunitat (`restriccions/{id}`, lectura pública per REST): les afegeix qualsevol persona registrada amb el correu confirmat (nidificació | tancament | altres, dates o «cada any» MM-DD, sector buit = tota la zona, enllaç a la font oficial, ODbL); «per confirmar» fins a 2 confirmacions d'altres (`conf`); retirar-les: `retPer` proposa i 2 més confirmen (`ret`); admin/revisors/premium directament. No canvien la nota meteo: icona al marcador, secció a la fitxa, al rànquing les de tota la zona (o tancament / Pla Alfa 4) al final. Pla Alfa: servei ArcGIS públic dels Agents Rurals (`services7.arcgis.com/ZCqVt1fRXwwK6GF4`, capes municipals avui/demà `PERIL_M` 0–4 i tancaments), municipi de cada zona desat a `cem_muni`; només Catalunya, avui i demà.
@@ -33,6 +36,7 @@ Pla complet: document «CEM — transferència de coneixement des d'Ocata Vent»
 ## Pendent
 - Desar i compartir el pla de sortida; escapada amb nit i càmpers.
 - Catàleg aprovat com a fitxer estàtic (GitHub Actions) quan creixi.
-- Sembra de zones europees des d'OpenStreetMap; relleu de 30 m fora de Catalunya.
+- Sembra de zones europees des d'OpenStreetMap (ampliar `tools/osm-query.txt`); relleu de 30 m fora de Catalunya.
+- Preferits al compte (ara només al mòbil).
 - Gestió de revisors (donar el rol) des de l'app.
 - Descàrrega per zona sense cobertura.
