@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=3">
+<link rel="stylesheet" href="app.css?v=4">
 </head>
 <body>
 
@@ -66,6 +66,7 @@
 
 <!-- dia i franja -->
 <div class="daybar card" id="daybar">
+  <div class="dayhint" id="dayHint" aria-live="polite"></div>
   <div class="days" id="days" role="group" aria-label="Dia"></div>
   <div class="seg slot-seg" role="group" aria-label="Franja" id="slotSeg">
     <button type="button" data-slot="am">Matí</button><button type="button" data-slot="pm">Tarda</button></div>
@@ -201,7 +202,7 @@
 
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 <script src="cloud.js?v=1"></script>
 </body>
 </html>

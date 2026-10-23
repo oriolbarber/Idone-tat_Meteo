@@ -4,7 +4,7 @@
   --bg:#eef0ea; --surface:#ffffff; --surface-2:#f2f3ee; --line:#cfd3c7; --ink:#1b1f18; --muted:#545c4c;
   --accent:#2d6a3e; --on-accent:#ffffff;
   --ok:#17824a; --mid:#c27c00; --no:#c62f2f; --ok-t:#d8f0e2; --mid-t:#fbe9c8; --no-t:#f8dada; --na:#8a9183;
-  --sun:#e0a000; --shade:#5f6b78;
+  --sun:#e0a000; --shade:#5f6b78; --on-lv:#ffffff;
   --shadow:0 1px 2px #1b1f1814, 0 6px 18px #1b1f1814;
   --f:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
   --f-num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -15,13 +15,13 @@
   --bg:#11140f; --surface:#1a1e17; --surface-2:#22271e; --line:#353c2f; --ink:#eef1e8; --muted:#a6ae9b;
   --accent:#7cc98f; --on-accent:#0d140f;
   --ok:#4fd389; --mid:#ffb43d; --no:#ff6b6b; --ok-t:#163524; --mid-t:#3d2c0c; --no-t:#3d1717; --na:#7d8476;
-  --sun:#ffc533; --shade:#9aa8b8; --shadow:0 0 0 1px #ffffff08, 0 10px 28px #0008;
+  --sun:#ffc533; --shade:#9aa8b8; --on-lv:#0d140f; --shadow:0 0 0 1px #ffffff08, 0 10px 28px #0008;
   color-scheme:dark;}}
 :root[data-theme="dark"]{
   --bg:#11140f; --surface:#1a1e17; --surface-2:#22271e; --line:#353c2f; --ink:#eef1e8; --muted:#a6ae9b;
   --accent:#7cc98f; --on-accent:#0d140f;
   --ok:#4fd389; --mid:#ffb43d; --no:#ff6b6b; --ok-t:#163524; --mid-t:#3d2c0c; --no-t:#3d1717; --na:#7d8476;
-  --sun:#ffc533; --shade:#9aa8b8; --shadow:0 0 0 1px #ffffff08, 0 10px 28px #0008;
+  --sun:#ffc533; --shade:#9aa8b8; --on-lv:#0d140f; --shadow:0 0 0 1px #ffffff08, 0 10px 28px #0008;
   color-scheme:dark;}
 /* daltonisme: blau / groc / taronja fosc (paleta Okabe-Ito) */
 :root[data-cb="1"]{--ok:#0072b2; --mid:#e69f00; --no:#d55e00; --ok-t:#d6e8f5; --mid-t:#fbeccc; --no-t:#f9dfcc}
@@ -78,7 +78,8 @@ h2{font-size:1.3em;margin:0;line-height:1.15}
 .chk input{width:22px;height:22px;accent-color:var(--accent)}
 
 /* barra de dia i franja */
-.daybar{position:fixed;z-index:15;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:8px;display:flex;align-items:center;gap:8px}
+.daybar{position:fixed;z-index:15;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:6px 8px 8px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.dayhint{flex-basis:100%;font-size:.74em;font-weight:700;color:var(--muted);padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .days{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;scroll-snap-type:x proximity}
 .days::-webkit-scrollbar{display:none}
 .days button{flex:none;min-width:56px;min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;scroll-snap-align:start;padding:2px 6px}
@@ -86,8 +87,8 @@ h2{font-size:1.3em;margin:0;line-height:1.15}
 .days button small{font-size:.72em;color:var(--muted);font-weight:600}
 .days button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .days button[aria-pressed="true"] small{color:inherit}
-.days .dk{display:flex;gap:2px;margin-top:2px}
-.days .dk i{width:9px;height:5px;border-radius:2px}
+.days .dk{display:flex;gap:2px;margin-top:3px}
+.days .dk i{min-width:20px;height:17px;border-radius:5px;font-style:normal;font-family:var(--f-num);font-size:11px;font-weight:800;line-height:17px;text-align:center;color:var(--on-lv)}
 .slot-seg{flex:none;flex-direction:column}
 .slot-seg button{min-height:24px;font-size:.8em}
 

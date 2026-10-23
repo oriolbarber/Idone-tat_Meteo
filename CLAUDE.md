@@ -15,7 +15,7 @@ Pla complet: document «CEM — transferència de coneixement des d'Ocata Vent»
 
 ## Fitxers
 - `zones.js`: catàleg de zones (de prova, coordenades aproximades) i tipus de roca.
-- `app.js`: mapa (ICGC), previsió (Open-Meteo), model de veredicte (secat, confort Steadman + escalant/assegurant + roba, adherència, vent), traçat de parets amb orientació i horitzó del relleu de 5 m de l'ICGC, zones agrupades amb anell de %.
+- `app.js`: mapa (ICGC), previsió (Open-Meteo), model de veredicte (secat, confort Steadman + escalant/assegurant + roba, adherència, vent), traçat de parets amb orientació i horitzó del relleu de 5 m de l'ICGC, zones agrupades amb anell de %. Barra de dies = mitjana de les zones a la vista (matí | tarda), es recalcula a `moveend`.
 - `cloud.js`: comptes (correu i contrasenya + enllaç; Google no activat), perfil `usuaris/{uid}`, propostes `propostes/{id}` (correu confirmat + llicència ODbL 1.0), revisió (admin, `rol: "revisor"` o `premium`), catàleg aprovat `parets/{id}` llegit amb l'API REST pública (sense carregar Firebase).
 - `firestore.rules`: regles. Administració inicial = correu `oriolbarber@gmail.com` confirmat. Es publiquen amb `.github/workflows/deploy-rules.yml` si hi ha el secret `FIREBASE_SERVICE_ACCOUNT`; si no, a mà (consola ▸ Firestore ▸ Regles).
 

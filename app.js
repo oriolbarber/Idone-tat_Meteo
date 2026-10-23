@@ -265,7 +265,7 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:"Previsió: Open-Meteo"}), "bottom-right");
 map.addControl(new maplibregl.ScaleControl({unit:"metric"}), "bottom-left");
-map.on("moveend", () => store.set("cem_view", {c: map.getCenter().toArray(), z: map.getZoom()}));
+map.on("moveend", () => { store.set("cem_view", {c: map.getCenter().toArray(), z: map.getZoom()}); if(!drawing) renderDays(false); });
 
 function applyBase(){
   if(!map.getLayer("topo")) return;
@@ -417,18 +417,33 @@ function renderWalls(){
 }
 
 /* ---------- barra de dia i franja ---------- */
-function renderDays(){
-  const box = $("days"), keys = daysAvail(), today = localOf(Date.now()).key;
-  const best = (k, s) => { let b = "na"; const rank = {na:0, no:1, mid:2, ok:3};
-    ZONES.forEach(z => { const v = zoneSlot(zoneEval(z), k, s); if(rank[v.lv] > rank[b]) b = v.lv; }); return b; };
+// Barra de dies: per a cada dia i franja, la mitjana de les zones que es veuen ara al mapa.
+// Es recalcula en moure o fer zoom (moveend). Sense cap zona a la vista, gris.
+function visibleZones(){
+  const b = map.getBounds();
+  return ZONES.filter(z => b.contains([z.lon, z.lat]));
+}
+function avgSlot(zs, k, s){
+  const sc = zs.map(z => zoneSlot(zoneEval(z), k, s).sc).filter(v => v != null);
+  if(!sc.length) return {lv:"na", sc:null};
+  const m = sc.reduce((a, b) => a + b, 0) / sc.length;
+  return {lv: lvOf(m, null), sc: m};
+}
+function renderDays(scroll = true){
+  if(!DATA) return;
+  const box = $("days"), keys = daysAvail(), today = localOf(Date.now()).key, zs = visibleZones();
+  const cell = v => `<i class="lv-${v.lv}">${v.sc == null ? "–" : Math.round(v.sc)}</i>`;
   box.innerHTML = keys.map((k, i) => {
     const d = new Date(k + "T12:00:00");
     const lbl = k === today ? "Avui" : i === 1 && keys[0] === today ? "Demà" : DOW[d.getDay()];
-    return `<button type="button" data-day="${k}" aria-pressed="${k === dayKey}"><b>${lbl}</b><small>${d.getDate()} ${MONTHS[d.getMonth()]}</small>` +
-      `<span class="dk" aria-hidden="true"><i class="lv-${best(k, "am")}"></i><i class="lv-${best(k, "pm")}"></i></span></button>`;
+    const am = avgSlot(zs, k, "am"), pm = avgSlot(zs, k, "pm");
+    const aria = `${lbl} ${d.getDate()} ${MONTHS[d.getMonth()]}. Mitjana de les zones a la vista: matí ${am.sc == null ? "sense dades" : Math.round(am.sc)}, tarda ${pm.sc == null ? "sense dades" : Math.round(pm.sc)}.`;
+    return `<button type="button" data-day="${k}" aria-pressed="${k === dayKey}" aria-label="${aria}"><b>${lbl}</b><small>${d.getDate()} ${MONTHS[d.getMonth()]}</small>` +
+      `<span class="dk" aria-hidden="true">${cell(am)}${cell(pm)}</span></button>`;
   }).join("");
+  $("dayHint").textContent = zs.length ? `Mitjana de ${zs.length === 1 ? "la zona" : "les " + zs.length + " zones"} a la vista · matí | tarda` : "Cap zona a la vista: mou o allunya el mapa";
   document.querySelectorAll("#slotSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.slot === slot)));
-  const sel = box.querySelector('[aria-pressed="true"]'); if(sel) sel.scrollIntoView({inline:"nearest", block:"nearest"});
+  if(scroll){ const sel = box.querySelector('[aria-pressed="true"]'); if(sel) sel.scrollIntoView({inline:"nearest", block:"nearest"}); }
   document.documentElement.style.setProperty("--daybar-h", $("daybar").offsetHeight + 16 + "px");
 }
 $("days").addEventListener("click", e => { const b = e.target.closest("button[data-day]"); if(!b) return; dayKey = b.dataset.day; renderAll(); });
