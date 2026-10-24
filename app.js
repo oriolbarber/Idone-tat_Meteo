@@ -390,16 +390,27 @@ function applyLayers(){
   window.CEM_H && CEM_H.update();
 }
 // Radar de pluja (RainViewer): últim fotograma disponible; només fins a zoom 7 natiu
+// Amb la capa de colors activa, el radar es pinta en gris fosc (com una ombra de núvol): els seus blaus i grocs
+// es barrejaven amb el verd/vermell de la capa i, amb daltonisme, el blau del radar era el mateix que «recomanat».
+let radarAt = null;
+function radarStyle(){
+  if(!map.getLayer("radar")) return;
+  const g = !!ly.heat, P = {"raster-saturation": g ? -1 : 0, "raster-brightness-max": g ? 0.35 : 1, "raster-contrast": g ? 0.3 : 0, "raster-opacity": g ? 0.6 : 0.7};
+  Object.entries(P).forEach(([k, v]) => map.setPaintProperty("radar", k, v));
+  const note = $("radarNote");
+  if(radarAt){ const d = new Date(radarAt); note.textContent = "Radar de les " + pad(d.getHours()) + ":" + pad(d.getMinutes()) +
+    (g ? ", en gris: és la pluja d'ara; els colors són del dia i la franja triats." : "."); note.hidden = false; }
+}
 async function radar(on){
   const note = $("radarNote");
   if(!on){ if(map.getLayer("radar")) map.removeLayer("radar"); if(map.getSource("radar")) map.removeSource("radar"); note.hidden = true; return; }
-  if(map.getLayer("radar")) return;
+  if(map.getLayer("radar")) return radarStyle();
   try{
     const j = await (await fetch("https://api.rainviewer.com/public/weather-maps.json")).json();
     const f = j.radar.past[j.radar.past.length - 1];
     map.addSource("radar", {type:"raster", tiles:[j.host + f.path + "/256/{z}/{x}/{y}/2/1_1.png"], tileSize:256, maxzoom:7, attribution:"Radar: RainViewer"});
     map.addLayer({id:"radar", type:"raster", source:"radar", paint:{"raster-opacity":0.7}}, map.getLayer("wall-line") ? "wall-line" : undefined);
-    const d = new Date(f.time * 1000); note.textContent = "Radar de les " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + "."; note.hidden = false;
+    radarAt = f.time * 1000; radarStyle();
   }catch(e){ note.textContent = "No s'ha pogut carregar el radar."; note.hidden = false; }
 }
 
@@ -830,7 +841,7 @@ function infoContent(k){
       <p>Amb la franja <b>Dia</b>, la rodona es parteix: <b>esquerra = matí</b>, <b>dreta = tarda</b>. La icona del cantó és el veredicte del dia.</p>
       <p>Amb diversos dies triats, la rodona diu quants són bons (p. ex. 2/3).</p>
       <p><b>Fletxa negra:</b> cap on bufa el vent. El número del costat del nom és el vent mitjà en km/h. Els noms surten quan t'hi acostes.</p>
-      <p><b>Capa de colors</b> (Capes ▸ Idoneïtat amb colors): la nota pintada al voltant de les zones, meteo general sense orientació.</p>
+      <p><b>Capa de colors</b> (Capes ▸ Idoneïtat amb colors): la nota pintada al voltant de les zones, meteo general sense orientació. Si també hi ha el radar, la pluja d'ara es veu en gris per sobre.</p>
       <p><b>Rodones amb anell:</b> diverses zones juntes; l'anell mostra el % de cada color. Toca-les per acostar-t'hi.</p>
       <p><b>Barra de dies:</b> mitjana de les zones que es veuen ara al mapa (matí | tarda). Canvia quan mous el mapa. Amb <b>vora discontínua</b>, previsió orientativa (a partir del 6è dia).</p>
       <p class="note">Mapes © ICGC (CC BY) · previsió Open-Meteo (CC BY 4.0). Més detall a Menú ▸ Fonts i avís.</p>`],
