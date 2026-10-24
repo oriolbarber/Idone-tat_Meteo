@@ -145,6 +145,19 @@ function parseOM(arr, zs, out){
   });
   return out;
 }
+// Previsió precalculada (fc.json, branca «dades»): GitHub Actions la baixa d'Open-Meteo cada 3 h per a totes les zones,
+// amb la mateixa adreça (omURL) i la desa en brut, en enters (valor × escala). Cada mòbil hi aplica els SEUS llindars.
+const FC_URL = window.CEM_FC_URL || "https://raw.githubusercontent.com/oriolbarber/Idone-tat_Meteo/dades/fc.json";
+const FC_OLD = 12 * 3600e3;                                // més vella que això = es baixa d'Open-Meteo
+function fcHydrate(j, zs, out){
+  zs.forEach(z => { const f = j.zones[z.id]; if(!f) return;
+    const o = {t: Array.from({length: j.n}, (_, i) => j.t0 + i * 3600e3)};
+    o.loc = o.t.map(localOf);
+    HV.forEach(k => { const s = SHORT[k], a = f.h[s], e = j.sc[s] || 1; o[s] = a ? a.map(v => v == null ? null : v / e) : []; });
+    o.sun = {}; Object.entries(f.sun).forEach(([k, v]) => o.sun[k] = {rise: v[0] * 1000, set: v[1] * 1000});
+    out.zones[z.id] = o; });
+  return out;
+}
 // Còpia per obrir sense connexió: totes les zones si hi caben; si no, només les preferides
 function saveFC(){
   const put = zs => { try{ localStorage.setItem("cem_fc", JSON.stringify({at: DATA.at,
@@ -160,11 +173,18 @@ let loading = false;
 async function load(){
   if(loading) return; loading = true;
   const zs = wanted(), out = {zones:{}, at:Date.now()};
-  msg(zs.length > 50 ? `Carregant la previsió de ${zs.length} zones…` : "Carregant la previsió…");
+  msg("Carregant la previsió…");
   try{
-    // per lots de 50 llocs (adreça curta i resposta raonable)
-    for(let i = 0; i < zs.length; i += 50){
-      const b = zs.slice(i, i + 50), r = await fetch(omURL(b));
+    // 1) el fitxer de GitHub (un sol fitxer per a totes les zones); si no arriba o és vell, tot a Open-Meteo
+    try{ const r = await fetch(FC_URL, {cache:"no-cache"}); if(!r.ok) throw 0;
+      const j = await r.json(); if(j.v !== 1 || Date.now() - j.at > FC_OLD) throw 0;
+      fcHydrate(j, zs, out); out.at = j.at;
+    }catch(e){}
+    // 2) Open-Meteo només per a les zones que no hi són (zones noves), per lots de 50 llocs
+    const miss = zs.filter(z => !out.zones[z.id]);
+    if(miss.length > 50) msg(`Carregant la previsió de ${miss.length} zones…`);
+    for(let i = 0; i < miss.length; i += 50){
+      const b = miss.slice(i, i + 50), r = await fetch(omURL(b));
       if(!r.ok) throw new Error("HTTP " + r.status);
       parseOM(await r.json(), b, out);
     }

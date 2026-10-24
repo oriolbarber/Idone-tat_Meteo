@@ -1,0 +1,33 @@
+# Dades de previsió per a l'app, cada 3 hores, publicades a la branca «dades» (un sol commit que es reescriu: no omple
+# l'historial de main ni torna a publicar l'app). L'app les llegeix de raw.githubusercontent.com; si no hi són o són
+# velles (> 12 h), les demana a Open-Meteo des del mòbil com abans.
+#   fc.json   previsió en brut de totes les zones (tools/fc-build.mjs): cada mòbil hi aplica els seus llindars
+#   heat.json capa «Idoneïtat amb colors» ja calculada (tools/heat-build.mjs)
+name: Dades de previsió
+on:
+  schedule: [{cron: "23 */3 * * *"}]
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: dades, cancel-in-progress: false}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Previsió de les zones (fc.json)
+        run: node tools/fc-build.mjs "$RUNNER_TEMP/fc.json" | tee "$RUNNER_TEMP/fc.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/fc.txt)"
+      - name: Capa d'idoneïtat (heat.json)
+        run: node tools/heat-build.mjs "$RUNNER_TEMP/heat.json" | tee "$RUNNER_TEMP/heat.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/heat.txt)"
+      - name: Publica a la branca «dades»
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git checkout -q --orphan dades-tmp
+          git rm -rqf .
+          cp "$RUNNER_TEMP/fc.json" "$RUNNER_TEMP/heat.json" .
+          printf '%s\n' "# Dades calculades (no editar)" "Les genera .github/workflows/dades.yml (branca main) cada 3 h." "fc.json: previsió de les zones · heat.json: capa d'idoneïtat." "Previsió: Open-Meteo (CC BY 4.0)." > README.md
+          git add fc.json heat.json README.md
+          git commit -qm "Dades de previsió $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf origin HEAD:dades
