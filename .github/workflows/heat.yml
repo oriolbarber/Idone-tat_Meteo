@@ -1,0 +1,29 @@
+# Calcula la capa «Idoneïtat amb colors» (heat.json) per a totes les zones cada 3 hores i la publica a la branca «dades».
+# La branca «dades» només té l'últim fitxer (un sol commit que es reescriu): no omple l'historial de main ni torna a
+# publicar l'app. L'app el llegeix de raw.githubusercontent.com i, si no hi és o és vell, calcula la capa al mòbil.
+name: Capa d'idoneïtat
+on:
+  schedule: [{cron: "23 */3 * * *"}]
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: heat, cancel-in-progress: false}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Calcula heat.json (Open-Meteo)
+        run: node tools/heat-build.mjs "$RUNNER_TEMP/heat.json" | tee "$RUNNER_TEMP/n.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/n.txt)"
+      - name: Publica a la branca «dades»
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git checkout -q --orphan dades-tmp
+          git rm -rqf .
+          cp "$RUNNER_TEMP/heat.json" heat.json
+          printf '%s\n' "# Dades calculades (no editar)" "heat.json: capa d'idoneïtat, la genera .github/workflows/heat.yml a main cada 3 h." "Previsió: Open-Meteo (CC BY 4.0)." > README.md
+          git add heat.json README.md
+          git commit -qm "Capa d'idoneïtat $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf origin HEAD:dades

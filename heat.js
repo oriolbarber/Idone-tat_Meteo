@@ -3,10 +3,13 @@
 // mateixa nota que una zona sense parets (meteo general: sense orientació ni sol/ombra de paret, roca calcària)
 // per al dia i la franja triats, i es pinta com una imatge suavitzada per sota dels marcadors.
 // Només es pinta a prop de les zones (com BoletRadar, que només pinta sobre bosc): lluny no s'hi fa cap estimació.
+// Font de les notes: primer heat.json, que GitHub Actions calcula cada 3 h per a totes les zones (tools/heat-build.mjs,
+// branca «dades»), amb els llindars per defecte i roba normal. Els punts que no hi són (zones noves) i els casos en
+// què el fitxer no arriba es calculen al mòbil amb Open-Meteo, com abans.
 "use strict";
 window.CEM_H = (function(){
   const STEP = 0.1;                  // graus entre punts de la graella (~11 × 8 km)
-  const R_IN = 9000, R_OUT = 18000;  // color ple fins a R_IN de la zona més propera; s'esvaeix fins a R_OUT
+  const R_IN = 10000, R_OUT = 20000; // color ple fins a R_IN de la zona més propera; s'esvaeix fins a R_OUT
   const TTL = 3600e3;                // la graella es torna a baixar al cap d'una hora
   const PX = 10;                     // píxels de la imatge per cel·la
   const MAXC = 700;                  // més cel·les que això (vista molt allunyada) = no es pinta
@@ -14,6 +17,10 @@ window.CEM_H = (function(){
   const OPAC = 0.5;
   const cells = new Map();           // "i,j" → {lat, lon, o, at, alt}
   const evs = new Map();             // "i,j|criteris" → avaluació
+  const PRE_URL = window.CEM_HEAT_URL || "https://raw.githubusercontent.com/oriolbarber/Idone-tat_Meteo/dades/heat.json";
+  const PRE_TTL = 30 * 60e3;         // es torna a mirar si hi ha fitxer nou cada mitja hora
+  const PRE_OLD = 12 * 3600e3;       // amb connexió, un fitxer de més de 12 h no es fa servir (Actions aturat?)
+  let pre = null, preTried = 0;      // {at, days, idx: Map("i,j" → posició), vals, dec: Map}
   let thr = store.get("cem_heat_thr", 0);
   let busy = false, again = false, timer = null, lastErr = false;
 
@@ -27,7 +34,7 @@ window.CEM_H = (function(){
     zs.forEach(z => {
       const ic = Math.round(z.lat / STEP), jc = Math.round(z.lon / STEP);
       for(let i = ic - 3; i <= ic + 3; i++) for(let j = jc - 4; j <= jc + 4; j++){
-        const lat = i * STEP, lon = j * STEP;
+        const lat = +(i * STEP).toFixed(2), lon = +(j * STEP).toFixed(2);   // igual que tools/heat-build.mjs
         if(distM([z.lon, z.lat], [lon, lat]) < R_OUT + 6000) s.set(kOf(i, j), {i, j, lat, lon});
       }
     });
@@ -40,7 +47,7 @@ window.CEM_H = (function(){
       "&past_days=3&forecast_days=" + DAYS + "&wind_speed_unit=kmh";
   }
   async function fetchMissing(need){
-    const now = Date.now(), miss = [...need.values()].filter(p => { const c = cells.get(kOf(p.i, p.j)); return !c || now - c.at > TTL; });
+    const now = Date.now(), miss = [...need.values()].filter(p => { const k = kOf(p.i, p.j), c = cells.get(k); return !inPre(k) && (!c || now - c.at > TTL); });
     if(!miss.length) return;
     note(`Carregant la capa… 0/${miss.length}`);
     for(let n = 0; n < miss.length; n += 50){
@@ -56,13 +63,47 @@ window.CEM_H = (function(){
     }
   }
 
+  // ---------- fitxer precalculat (heat.json) ----------
+  function usePre(j, from){
+    if(!j || j.v !== 1 || !Array.isArray(j.cells)) return false;
+    const idx = new Map(); for(let n = 0; n < j.cells.length; n += 2) idx.set(kOf(j.cells[n], j.cells[n + 1]), n / 2);
+    pre = {at: j.at, days: j.days, idx, vals: j.vals, dec: new Map(), from}; return true;
+  }
+  async function loadPre(){
+    if(Date.now() - preTried < PRE_TTL && pre) return;
+    preTried = Date.now();
+    try{
+      const r = await fetch(PRE_URL, {cache: "no-cache"}); if(!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if(Date.now() - j.at > PRE_OLD) throw new Error("vell");
+      if(usePre(j, "net")) try{ localStorage.setItem("cem_heat", JSON.stringify(j)); }catch(e){}
+    }catch(e){
+      // sense connexió o fitxer vell: la còpia desada si és de menys de 2 dies; si no, tot al mòbil
+      const old = store.get("cem_heat");
+      if(!pre && old && Date.now() - old.at < 48 * 3600e3) usePre(old, "copia"); else if(pre && Date.now() - pre.at > 48 * 3600e3) pre = null;
+    }
+  }
+  // nota (0–10) d'un punt del fitxer per a un dia i franja; null = no hi és
+  function preVal(n, d, s){
+    const key = mod + "|" + role, dk = key + "|" + d + "|" + s;
+    let u = pre.dec.get(dk);
+    if(u === undefined){ const b = pre.vals[key] && pre.vals[key][d] && pre.vals[key][d][s];
+      u = b ? Uint8Array.from(atob(b), ch => ch.charCodeAt(0)) : null; pre.dec.set(dk, u); }
+    if(!u || u[n] === 255) return null; return u[n] / 10;
+  }
+  const inPre = k => pre && pre.idx.has(k);
+
   // Nota d'una cel·la per al dia o dies triats i la franja (null = sense dades)
   function score(k, c){
+    const ks = selDays.length > 1 ? selDays : [dayKey];
+    if(inPre(k)){ const n = pre.idx.get(k), v = ks.map(d => preVal(n, d, slot)).filter(x => x != null);
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
+    if(!c || !c.o) return null;
     const ck = k + "|" + [mod, role, clo, JSON.stringify(crit)].join("|");
     let ev = evs.get(ck);
     if(!ev){ const z = {id: "h" + k, lat: c.lat, lon: c.lon, alt: c.alt, rock: "calcaria"};
       ev = {z, o: c.o, zoneRows: evalSeries(z, null, null, null, c.o), segs: []}; evs.set(ck, ev); }
-    const ks = selDays.length > 1 ? selDays : [dayKey], v = ks.map(d => frSlot(ev, d).sc).filter(x => x != null);
+    const v = ks.map(d => frSlot(ev, d).sc).filter(x => x != null);
     return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
   }
 
@@ -86,7 +127,7 @@ window.CEM_H = (function(){
     let i0 = 1e9, i1 = -1e9, j0 = 1e9, j1 = -1e9;
     need.forEach(p => { i0 = Math.min(i0, p.i); i1 = Math.max(i1, p.i); j0 = Math.min(j0, p.j); j1 = Math.max(j1, p.j); });
     const ni = i1 - i0 + 1, nj = j1 - j0 + 1, V = new Float32Array(ni * nj).fill(NaN);
-    need.forEach(p => { const k = kOf(p.i, p.j), c = cells.get(k); if(c && c.o){ const s = score(k, c); if(s != null) V[(p.i - i0) * nj + (p.j - j0)] = s; } });
+    need.forEach(p => { const k = kOf(p.i, p.j), s = score(k, cells.get(k)); if(s != null) V[(p.i - i0) * nj + (p.j - j0)] = s; });
     // imatge: columnes uniformes en longitud, files uniformes en Mercator (com el mapa)
     const W = nj * PX, H = ni * PX;
     const west = (j0 - 0.5) * STEP, east = (j1 + 0.5) * STEP, north = (i1 + 0.5) * STEP, south = (i0 - 0.5) * STEP;
@@ -98,7 +139,7 @@ window.CEM_H = (function(){
       const lat = latOf(yN + (yS - yN) * (y + 0.5) / H), fi = lat / STEP - i0, ia = Math.floor(fi), ty = fi - ia;
       for(let x = 0; x < W; x++){
         const lon = west + (east - west) * (x + 0.5) / W;
-        // distància a la zona més propera (aproximació plana, prou bona a 15 km)
+        // distància a la zona més propera (aproximació plana, prou bona a 20 km)
         let dm = 1e12; for(const q of zl){ const dy = (lat - q[0]) * 111195, dx = (lon - q[1]) * 111195 * q[2], dd = dx * dx + dy * dy; if(dd < dm) dm = dd; }
         dm = Math.sqrt(dm); if(dm >= R_OUT) continue;
         // interpolació bilineal de la nota entre els 4 punts veïns (sense els que no tenen dades)
@@ -139,9 +180,10 @@ window.CEM_H = (function(){
     if(!ly.heat || !DATA){ hide(); note(null); return; }
     if(busy){ again = true; return; }
     busy = true;
-    try{ const need = needed(zonesNear());
+    try{ await loadPre(); draw();
+      const need = needed(zonesNear());
       if(need.size && need.size <= MAXC) await fetchMissing(need);
-      lastErr = false; note(null);
+      lastErr = false; note(pre ? "Capa calculada fa " + ago(pre.at) + (pre.from === "copia" ? " (còpia desada, sense connexió)." : ".") : null);
     }catch(e){ lastErr = true; note("No s'ha pogut carregar tota la capa de colors (sense connexió?).", true); }
     busy = false; draw();
     if(again){ again = false; run(); }
@@ -153,5 +195,5 @@ window.CEM_H = (function(){
   }
   document.addEventListener("input", e => { if(e.target.id !== "heatThr") return; thr = +e.target.value; store.set("cem_heat_thr", thr); renderUI(); draw(); });
   if(map.loaded()) update(); else map.once("load", update);
-  return {update, redraw: draw};
+  return {update, redraw: draw, _dbg: {score, kOf, cells, pre: () => pre}};   // _dbg: per a proves
 })();

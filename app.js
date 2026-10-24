@@ -849,7 +849,8 @@ function infoContent(k){
       <p>Pinta la nota (0–10) al voltant de les zones per al dia i la franja triats, amb els mateixos colors que les rodones: <b>vermell</b> no recomanat, <b>taronja</b> amb limitacions, <b>verd</b> recomanat.</p>
       <p>Surt d'una graella de punts de previsió cada uns 10 km. A cada punt es calcula la nota com si fos una zona <b>sense parets</b>: pluja, tempesta, roca molla, fred o calor, humitat i vent, però <b>sense l'orientació</b> ni el sol o l'ombra d'una paret concreta (i amb roca calcària).</p>
       <p>Per això la capa i una rodona poden no coincidir: <b>mana la rodona</b>, que té en compte les parets.</p>
-      <p>Només es pinta a prop de les zones d'escalada; lluny no s'hi fa cap estimació. Arriba fins a ${8} dies.</p>
+      <p>Només es pinta a prop de les zones d'escalada (fins a uns 20 km); lluny no s'hi fa cap estimació. Arriba fins a 8 dies.</p>
+      <p>Es calcula cada 3 hores per a totes les zones amb els <b>llindars per defecte</b> i roba normal: els teus llindars i la roba canvien les rodones, però no aquesta capa.</p>
       <p>A Capes pots amagar les notes baixes perquè només quedin les zones bones.</p>`],
     nota: ["Com es calcula la nota", `
       <p>Una nota de 0 a 10 per a cada franja: <b>matí</b> (8–13 h) i <b>tarda</b> (14–19 h), només amb llum. És la mitjana de les hores de la franja.</p>
