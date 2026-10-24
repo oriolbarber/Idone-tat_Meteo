@@ -35,7 +35,7 @@ let role  = store.get("cem_role", "climb");                // confort per a: cli
 let clo   = store.get("cem_clo", 1);                       // roba: 0.5 lleugera · 1 normal · 1.6 d'abric
 let slot  = store.get("cem_slot", null);                   // franja: am | pm (null = automàtica)
 let base  = store.get("cem_base", "topo");
-let ly    = Object.assign({slope:false, radar:false, wind:true, walls:true}, store.get("cem_ly", {}));
+let ly    = Object.assign({slope:false, radar:false, wind:true, walls:true, heat:false}, store.get("cem_ly", {}));
 let t3d   = store.get("cem_3d", false);
 const CRIT_DEF = {
   esportiva:{gustMid:45, gustMax:60},
@@ -215,8 +215,9 @@ function feelT(T, RH, wms, Q){
 const isStorm = (o, i) => (o.WC[i] >= 95) || ((o.CAPE[i] || 0) >= 1000 && (o.PP[i] || 0) >= 40);
 
 // Avalua totes les hores d'una zona per a una orientació (az, hz, exposició). Retorna una fila per hora.
-function evalSeries(z, az, hz, exp){
-  const o = DATA.zones[z.id], R = ROCKS[z.rock], wf = exp === "arrecerat" ? 0.5 : exp === "exposat" ? 1 : 0.8;
+// o: previsió del lloc (per defecte la de la zona; la capa de colors hi passa la d'un punt de la graella)
+function evalSeries(z, az, hz, exp, o = DATA.zones[z.id]){
+  const R = ROCKS[z.rock], wf = exp === "arrecerat" ? 0.5 : exp === "exposat" ? 1 : 0.8;
   const C = crit[mod];
   let W = 0, lastWet = null;
   return o.t.map((t, i) => {
@@ -367,7 +368,7 @@ map.addControl(new maplibregl.ScaleControl({unit:"metric"}), "bottom-left");
 // noms de zona només de prop: de lluny tapaven els topònims del mapa
 const zlo = () => document.body.classList.toggle("zlo", map.getZoom() < 10);
 map.on("zoomend", zlo); zlo();
-map.on("moveend", () => { store.set("cem_view", {c: map.getCenter().toArray(), z: map.getZoom()}); if(!drawing) renderDays(false); });
+map.on("moveend", () => { store.set("cem_view", {c: map.getCenter().toArray(), z: map.getZoom()}); if(!drawing){ renderDays(false); window.CEM_H && CEM_H.update(); } });
 
 function applyBase(){
   if(!map.getLayer("topo")) return;
@@ -386,6 +387,7 @@ function applyLayers(){
   $("lySlope").checked = ly.slope; $("lyRadar").checked = ly.radar; $("lyWind").checked = ly.wind; $("lyWalls").checked = ly.walls;
   radar(ly.radar);
   renderMarkers();
+  window.CEM_H && CEM_H.update();
 }
 // Radar de pluja (RainViewer): últim fotograma disponible; només fins a zoom 7 natiu
 async function radar(on){
@@ -748,7 +750,7 @@ document.addEventListener("click", e => { const b = e.target.closest && e.target
   if(window.CEM_CLOUD) CEM_CLOUD.propose(b.dataset.propose); else msg("El compte encara s'està carregant. Torna-ho a provar.", true); });
 function setRole(r){ role = r; store.set("cem_role", role); renderAll(); renderPanels(); }
 
-function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); }
+function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); window.CEM_H && CEM_H.update(); }
 
 /* ---------- CALENDARI: dies de la sortida ---------- */
 function openSheet(id){ ["calSheet", "rankSheet", "infoSheet"].forEach(x => $(x).hidden = x !== id); if(id === "calSheet") renderCal(); else renderRank(); }
@@ -828,9 +830,16 @@ function infoContent(k){
       <p>Amb la franja <b>Dia</b>, la rodona es parteix: <b>esquerra = matí</b>, <b>dreta = tarda</b>. La icona del cantó és el veredicte del dia.</p>
       <p>Amb diversos dies triats, la rodona diu quants són bons (p. ex. 2/3).</p>
       <p><b>Fletxa negra:</b> cap on bufa el vent. El número del costat del nom és el vent mitjà en km/h. Els noms surten quan t'hi acostes.</p>
+      <p><b>Capa de colors</b> (Capes ▸ Idoneïtat amb colors): la nota pintada al voltant de les zones, meteo general sense orientació.</p>
       <p><b>Rodones amb anell:</b> diverses zones juntes; l'anell mostra el % de cada color. Toca-les per acostar-t'hi.</p>
       <p><b>Barra de dies:</b> mitjana de les zones que es veuen ara al mapa (matí | tarda). Canvia quan mous el mapa. Amb <b>vora discontínua</b>, previsió orientativa (a partir del 6è dia).</p>
       <p class="note">Mapes © ICGC (CC BY) · previsió Open-Meteo (CC BY 4.0). Més detall a Menú ▸ Fonts i avís.</p>`],
+    capa: ["Capa de colors", `
+      <p>Pinta la nota (0–10) al voltant de les zones per al dia i la franja triats, amb els mateixos colors que les rodones: <b>vermell</b> no recomanat, <b>taronja</b> amb limitacions, <b>verd</b> recomanat.</p>
+      <p>Surt d'una graella de punts de previsió cada uns 10 km. A cada punt es calcula la nota com si fos una zona <b>sense parets</b>: pluja, tempesta, roca molla, fred o calor, humitat i vent, però <b>sense l'orientació</b> ni el sol o l'ombra d'una paret concreta (i amb roca calcària).</p>
+      <p>Per això la capa i una rodona poden no coincidir: <b>mana la rodona</b>, que té en compte les parets.</p>
+      <p>Només es pinta a prop de les zones d'escalada; lluny no s'hi fa cap estimació. Arriba fins a ${8} dies.</p>
+      <p>A Capes pots amagar les notes baixes perquè només quedin les zones bones.</p>`],
     nota: ["Com es calcula la nota", `
       <p>Una nota de 0 a 10 per a cada franja: <b>matí</b> (8–13 h) i <b>tarda</b> (14–19 h), només amb llum. És la mitjana de les hores de la franja.</p>
       <p>Cada hora parteix de 10 i resta per:</p>
@@ -985,6 +994,7 @@ function applyLook(){
   if(cb === "1") r.dataset.cb = "1"; else delete r.dataset.cb;
   const dark = theme === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   $("themeColor").setAttribute("content", dark ? "#11140f" : "#eef0ea");
+  window.CEM_H && CEM_H.redraw();   // els colors de la capa segueixen el tema i el daltonisme
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyLook);
 const CLO_TXT = {0.5:"lleugera", 1:"normal", 1.6:"d'abric"};
@@ -1080,7 +1090,7 @@ $("lyFav").addEventListener("change", e => setOnlyFav(e.target.checked));
 $("zFav").addEventListener("click", () => { if(selZone) toggleFav(selZone); });
 $("layerBtn").addEventListener("click", () => { const p = $("layerPanel"); p.hidden = !p.hidden; $("layerBtn").setAttribute("aria-expanded", String(!p.hidden)); });
 $("baseSeg").addEventListener("click", e => { const b = e.target.closest("button[data-base]"); if(!b) return; base = b.dataset.base; store.set("cem_base", base); applyBase(); });
-[["lySlope", "slope"], ["lyRadar", "radar"], ["lyWind", "wind"], ["lyWalls", "walls"]].forEach(([id, k]) =>
+[["lySlope", "slope"], ["lyRadar", "radar"], ["lyWind", "wind"], ["lyWalls", "walls"], ["lyHeat", "heat"]].forEach(([id, k]) =>
   $(id).addEventListener("change", e => { ly[k] = e.target.checked; store.set("cem_ly", ly); applyLayers(); }));
 $("terrainBtn").addEventListener("click", () => { t3d = !t3d; store.set("cem_3d", t3d); apply3D(); });
 $("locBtn").addEventListener("click", () => {
