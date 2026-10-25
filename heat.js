@@ -76,10 +76,10 @@ window.CEM_H = (function(){
       const r = await fetch(PRE_URL, {cache: "no-cache"}); if(!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
       if(Date.now() - j.at > PRE_OLD) throw new Error("vell");
-      if(usePre(j, "net")) try{ localStorage.setItem("cem_heat", JSON.stringify(j)); }catch(e){}
+      if(usePre(j, "net")) dPut("heat", j);              // còpia per a sense connexió (Cache Storage, vegeu app.js)
     }catch(e){
       // sense connexió o fitxer vell: la còpia desada si és de menys de 2 dies; si no, tot al mòbil
-      const old = store.get("cem_heat");
+      const old = await dGet("heat");
       if(!pre && old && Date.now() - old.at < 48 * 3600e3) usePre(old, "copia"); else if(pre && Date.now() - pre.at > 48 * 3600e3) pre = null;
     }
   }

@@ -158,15 +158,24 @@ function fcHydrate(j, zs, out){
     out.zones[z.id] = o; });
   return out;
 }
-// Còpia per obrir sense connexió: totes les zones si hi caben; si no, només les preferides
-function saveFC(){
-  const put = zs => { try{ localStorage.setItem("cem_fc", JSON.stringify({at: DATA.at,
-    zones: Object.fromEntries(Object.entries(zs).map(([k, o]) => { const {loc, ...rest} = o; return [k, rest]; }))})); return true; }catch(e){ return false; } };
-  if(put(DATA.zones)) return;
-  if(!put(Object.fromEntries(Object.entries(DATA.zones).filter(([k]) => favs.has(k))))) try{ localStorage.removeItem("cem_fc"); }catch(e){}
+// Còpia per obrir sense connexió. Va al magatzem de memòria cau del navegador (Cache Storage, «cem-dades»), no a
+// localStorage: localStorage té ~5 MB i el comparteixen totes les apps d'oriolbarber.github.io (Ocata Vent…),
+// i la previsió de totes les zones ja n'ocupava 4,6. El service worker no esborra «cem-dades» en actualitzar l'app.
+const DSTORE = "cem-dades";
+async function dPut(k, obj){
+  try{ const c = await caches.open(DSTORE); await c.put("./__dades/" + k, new Response(JSON.stringify(obj), {headers:{"content-type":"application/json"}})); return true; }
+  catch(e){ return false; }
 }
-function readFC(){
-  const d = store.get("cem_fc"); if(!d || !d.zones) return null;
+async function dGet(k){
+  try{ const c = await caches.open(DSTORE), r = await c.match("./__dades/" + k); return r ? await r.json() : null; }catch(e){ return null; }
+}
+// les còpies antigues de localStorage (versions anteriors de l'app) s'esborren per alliberar l'espai compartit
+try{ ["cem_fc", "cem_heat"].forEach(k => localStorage.removeItem(k)); }catch(e){}
+function saveFC(){
+  dPut("fc", {at: DATA.at, zones: Object.fromEntries(Object.entries(DATA.zones).map(([k, o]) => { const {loc, ...rest} = o; return [k, rest]; }))});
+}
+async function readFC(){
+  const d = await dGet("fc"); if(!d || !d.zones) return null;
   Object.values(d.zones).forEach(o => o.loc = o.t.map(localOf)); return d;
 }
 let loading = false;
@@ -191,7 +200,7 @@ async function load(){
     DATA = out; cache.clear(); saveFC();
     msg(null);
   }catch(e){
-    const old = readFC();
+    const old = await readFC();
     if(old && zs.some(z => old.zones[z.id])){
       DATA = old; cache.clear();
       msg("Sense connexió: previsió de fa " + ago(old.at) + (zs.every(z => old.zones[z.id]) ? "." : " (només les zones desades)."), true);
