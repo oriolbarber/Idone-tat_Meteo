@@ -30,4 +30,4 @@ jobs:
           printf '%s\n' "# Dades calculades (no editar)" "Les genera .github/workflows/dades.yml (branca main) cada 3 h." "fc.json: previsió de les zones · heat.json: capa d'idoneïtat." "Previsió: Open-Meteo (CC BY 4.0)." > README.md
           git add fc.json heat.json README.md
           git commit -qm "Dades de previsió $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push -qf origin HEAD:dades
+          for i in 1 2 3; do git push -qf origin HEAD:dades && exit 0; sleep 15; done; exit 1   # reintents: un error puntual de xarxa no fa perdre l'actualització
