@@ -213,16 +213,16 @@
 
 <div class="panel" id="pLlicencia" hidden>
   <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Proposa la paret</h2><span></span></div>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="licTitle">Proposa la paret</h2><span></span></div>
   <div class="pbody acc">
     <p id="licWall"></p>
-    <div class="legal">
+    <div class="legal" id="licLegal">
       <p><b>Què passa ara:</b> la paret queda pendent. Quan una persona revisora l'aprovi, la veurà tothom i comptarà al veredicte de la zona.</p>
       <p><b>Llicència:</b> les dades de la paret (traçat, orientació, horitzó i exposició) s'incorporen al catàleg de CEM, que es publica sota la llicència oberta <b>ODbL 1.0</b> (la mateixa que OpenStreetMap). Vol dir que CEM les pot publicar, modificar i compartir, i que qualsevol pot reutilitzar el catàleg citant-ne la font.</p>
       <p><b>Garanties:</b> confirmes que la paret l'has traçada tu i que no l'has copiada de cap guia ni ressenya protegida.</p>
       <p><b>Dades personals:</b> la paret aprovada no porta el teu nom. La proposta guarda qui l'ha enviada només fins que es revisa.</p>
     </div>
-    <label class="ck"><input type="checkbox" id="licCk"> Accepto que la paret s'incorpori al catàleg sota la llicència ODbL 1.0.</label>
+    <label class="ck"><input type="checkbox" id="licCk"> <span id="licCkTxt">Accepto que la paret s'incorpori al catàleg sota la llicència ODbL 1.0.</span></label>
     <div class="amsg" data-accmsg hidden></div>
     <button class="btn pri" type="button" id="licSend">Envia la proposta</button>
   </div>
@@ -267,8 +267,8 @@
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
 <script src="zones-osm.js?v=1"></script>
-<script src="app.js?v=15"></script>
-<script src="cloud.js?v=2"></script>
+<script src="app.js?v=16"></script>
+<script src="cloud.js?v=3"></script>
 <script src="restr.js?v=1"></script>
 <script src="heat.js?v=3"></script>
 </body>

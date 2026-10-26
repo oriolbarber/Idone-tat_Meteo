@@ -5,6 +5,7 @@ rules_version = '2';
 // - propostes/{id}: parets proposades. Les crea qui té el correu confirmat i accepta la llicència ODbL.
 //   Les revisa (aprova o rebutja) l'administració, un revisor o un premium.
 // - parets/{id}: catàleg aprovat. Lectura pública (l'app la llegeix sense compte).
+// - orientacions/{sector_cara}: orientacions de sectors d'OSM aprovades. Lectura pública.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signed(){ return request.auth != null; }
@@ -37,15 +38,22 @@ service cloud.firestore {
 
     match /propostes/{id} {
       allow read: if signed() && (resource.data.userId == request.auth.uid || reviewer());
+      function okAz(v){ return v is number && v >= 0 && v < 360; }
       allow create: if verified() && hasProf()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.estat == "pendent"
         && request.resource.data.llicencia == "ODbL-1.0"
-        && request.resource.data.tipus == "paret"
         && str(request.resource.data.zone, 60) && str(request.resource.data.name, 80)
-        && request.resource.data.exp in ["exposat", "arrecerat"]
-        && str(request.resource.data.d, 200000)
-        && request.resource.data.keys().hasOnly(["userId", "tipus", "zone", "name", "exp", "d", "estat", "llicencia", "licAt", "creat"]);
+        && ((request.resource.data.tipus == "paret"
+            && request.resource.data.exp in ["exposat", "arrecerat"]
+            && str(request.resource.data.d, 200000)
+            && request.resource.data.keys().hasOnly(["userId", "tipus", "zone", "name", "exp", "d", "estat", "llicencia", "licAt", "creat"]))
+          // orientació d'un sector d'OSM (cara 0–7)
+          || (request.resource.data.tipus == "orientacio"
+            && str(request.resource.data.sector, 40) && request.resource.data.cara is int
+            && request.resource.data.cara >= 0 && request.resource.data.cara < 8
+            && okAz(request.resource.data.az) && okAz(request.resource.data.azAuto)
+            && request.resource.data.keys().hasOnly(["userId", "tipus", "zone", "name", "sector", "cara", "az", "azAuto", "estat", "llicencia", "licAt", "creat"])));
       allow update: if reviewer()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["estat", "motiu", "revisatPer", "revisatAt"])
         && request.resource.data.estat in ["aprovada", "rebutjada"];
@@ -90,6 +98,16 @@ service cloud.firestore {
         || (reviewer() && aff().hasOnly(["estat", "retPer", "ret", "act"]) && request.resource.data.estat in ["pendent", "confirmada", "retirada"])
       );
       allow delete: if reviewer() || (signed() && resource.data.creatPer == request.auth.uid && resource.data.estat == "pendent");
+    }
+
+    // Orientacions de sectors d'OSM revisades: {sector}_{cara}. Lectura pública; mana sobre OSM i el relleu.
+    match /orientacions/{id} {
+      allow read: if true;
+      allow create, update: if reviewer()
+        && request.resource.data.keys().hasOnly(["sector", "cara", "zone", "az", "llicencia", "v", "aprovat"])
+        && request.resource.data.llicencia == "ODbL-1.0"
+        && request.resource.data.az is number && request.resource.data.az >= 0 && request.resource.data.az < 360;
+      allow delete: if isAdmin();
     }
 
     match /parets/{id} {

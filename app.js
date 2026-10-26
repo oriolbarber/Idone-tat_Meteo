@@ -45,7 +45,9 @@ const CRIT_DEF = {
 let crit = Object.assign(structuredClone(CRIT_DEF), store.get("cem_crit", {}));
 let userWalls = store.get("cem_walls", []);               // parets traçades en aquest mòbil (w.prop = estat de la proposta)
 let cloudWalls = store.get("cem_cloud_walls", []);        // parets aprovades per a tothom (col·lecció «parets», les porta cloud.js)
-let azFix = store.get("cem_azfix", {});                   // correcció manual: {"paretId:tram": az}
+let azFix = store.get("cem_azfix", {});                   // correcció manual: {"paretId:tram": az} i {"s:sector:cara": az}
+let cloudOri = store.get("cem_cloud_ori", {});            // orientacions de sectors aprovades per a tothom: {"s:sector:cara": az} (cloud.js)
+let oriProp = store.get("cem_ori_prop", {});              // propostes d'orientació d'aquest mòbil: {"s:sector:cara": {id, az, estat, motiu}}
 let dayKey = null;                                        // dia enfocat (AAAA-MM-DD): el que es mostra en detall
 let selDays = store.get("cem_days", []);                  // dies de la sortida (un o diversos, no cal que siguin seguits)
 let selZone = null;                                       // zona oberta a la fitxa
@@ -306,22 +308,24 @@ function slotVerdict(rows, o, key, s){
 }
 
 // Sectors d'OSM amb orientació (zones-osm.js: f = cares {az, hz en base64}, o = "osm" etiqueta | "dem" calculada amb
-// el relleu): cada cara s'avalua com una paret. azFix la pot corregir en aquest mòbil (clau "s:<sector>:<cara>").
+// el relleu): cada cara s'avalua com una paret. Mana, per ordre: la correcció d'aquest mòbil (azFix), la de la
+// comunitat ja revisada (cloudOri) i la d'OSM o el relleu. Clau de totes tres: "s:<sector>:<cara>".
 function secFaces(z){
-  const out = [], fx = typeof azFix === "undefined" ? {} : azFix;
+  const out = [], fx = typeof azFix === "undefined" ? {} : azFix, co = typeof cloudOri === "undefined" ? {} : cloudOri;
   (z.sectors || []).forEach(s => (s.f || []).forEach((f, i) => {
     if(f.hz && f._hz === undefined){ try{ f._hz = Array.from(atob(f.hz), ch => ch.charCodeAt(0)); }catch(e){ f._hz = null; } }
-    const key = "s:" + s.id + ":" + i, fix = fx[key], az = fix != null ? fix : f.az;
+    const key = "s:" + s.id + ":" + i, fix = fx[key] != null ? fx[key] : co[key], az = fix != null ? fix : f.az;
+    const src = fx[key] != null ? "mob" : co[key] != null ? "com" : s.o;
     // horitzó calculat per a una orientació molt diferent: no serveix (taparia el sol que sí que hi toca)
     const hz = fix != null && Math.abs(((fix - f.az + 540) % 360) - 180) > 30 ? null : f._hz;
-    out.push({w: {id: s.id, name: s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), segs: s.f, sector: s, est: s.o === "dem"}, i, az, hz, key});
+    out.push({w: {id: s.id, name: s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), segs: s.f, sector: s, est: src === "dem"}, i, az, hz, key, src});
   }));
   return out;
 }
 // Avaluació completa d'una zona: zona sencera o la millor paret (parets traçades i sectors amb orientació)
 const cache = new Map();
 function zoneEval(z){
-  const k = [z.id, mod, role, clo, JSON.stringify(crit), JSON.stringify(azFix), userWalls.length, DATA.at].join("|");
+  const k = [z.id, mod, role, clo, JSON.stringify(crit), JSON.stringify(azFix), JSON.stringify(typeof cloudOri === "undefined" ? {} : cloudOri), userWalls.length, DATA.at].join("|");
   if(cache.has(k)) return cache.get(k);
   const ws = wallsOf(z), o = DATA.zones[z.id];
   const targets = ws.flatMap(w => w.segs.map((s, i) => ({w, i, az: segAz(w, i), hz: s.hz}))).filter(x => x.az != null).concat(secFaces(z));
@@ -718,6 +722,16 @@ function azFixHTML(key, cur){
     `<button type="button" data-az="auto" aria-pressed="${cur == null}">Auto</button></div>`;
 }
 
+// D'on surt l'orientació d'un sector, i l'estat de la proposta si se n'ha corregit en aquest mòbil
+const ORI_SRC = {mob:"corregida en aquest mòbil", com:"corregida per la comunitat", dem:"estimada amb el relleu", osm:"OpenStreetMap"};
+function oriPropHTML(x){
+  if(x.src !== "mob") return "";
+  const p = oriProp[x.key];
+  if(p && p.az === azFix[x.key] && p.estat === "pendent") return `<span class="wtag lv-mid">Proposta pendent de revisió</span>`;
+  const rej = p && p.az === azFix[x.key] && p.estat === "rebutjada" ? `<span class="wtag lv-no">Rebutjada${p.motiu ? ": " + esc(p.motiu) : ""}</span>` : "";
+  return rej + `<button class="btn sm" type="button" data-propori="${esc(x.key)}">Proposa-la a tothom</button>`;
+}
+
 // Sectors de la zona (OpenStreetMap): nom i coordenades, amb «Copia» i l'app de mapes del mòbil
 function mapHrefOf(lat, lon, name){
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -729,9 +743,9 @@ function sectorsHTML(z, ev, best){
   return `<details class="more secs"${open ? " open" : ""}><summary>Sectors (${ss.length})${INF("osm")}</summary>${hasF ? SUN_LEG : ""}<ul class="seclist">` +
     ss.map(s => { const ll = `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`, nm = s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), href = mapHrefOf(s.lat, s.lon, nm);
       const fs = ev.segs.filter(x => x.w.sector === s);
-      const face = fs.map(x => { const p = sunPlan(x.rows, dayKey), fixed = azFix[x.key] != null;
+      const face = fs.map(x => { const p = sunPlan(x.rows, dayKey);
         return `<div class="sface"><div class="wh">${arrowSVG(x.az)}<span>Mira al <b>${cardOf(x.az)}</b> (${Math.round(x.az)}°)</span>` +
-          `<small class="muted">${fixed ? "corregida en aquest mòbil" : s.o === "dem" ? "estimada amb el relleu" : "OpenStreetMap"}</small>` +
+          `<small class="muted">${ORI_SRC[x.src] || "OpenStreetMap"}</small>${oriPropHTML(x)}` +
           (best && best.key === x.key ? `<span class="wtag lv-ok">Millor</span>` : "") + `</div>${sunBarHTML(p, dayKey)}` +
           `<details class="more"><summary>Corregeix l'orientació</summary>${azFixHTML(x.key, azFix[x.key])}</details></div>`; }).join("");
       return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
@@ -848,6 +862,8 @@ $("zBody").addEventListener("click", e => {
   if(x){ const w = userWalls.find(w => w.id === x.parentElement.dataset.exp);
     if(w){ w.exp = x.dataset.v; saveWalls(); renderAll(); } else msg("Aquesta paret és de tothom: per canviar-ne l'exposició, traça-la i proposa-la de nou.", true); return; }
   if(e.target.closest("#drawStart")) startDraw();
+  const po = e.target.closest("button[data-propori]");
+  if(po){ if(window.CEM_CLOUD && CEM_CLOUD.proposeOri) CEM_CLOUD.proposeOri(po.dataset.propori); else msg("El compte encara s'està carregant. Torna-ho a provar.", true); }
 });
 // Proposar una paret: ho fa cloud.js (compte, acceptació de la llicència i enviament)
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("button[data-propose]"); if(!b) return;
@@ -974,7 +990,7 @@ function infoContent(k){
       <li><span class="sunleg"><span><i class="o"></i></span></span> <b>Ombra agradable</b> (o el sol tapat pels núvols).</li>
       <li><span class="sunleg"><span><i class="c"></i></span></span> <b>Ombra freda:</b> sensació per sota de ${crit.comfLo} °C sense sol.</li></ul>
       <p>El sol a la paret es calcula amb cap on mira i l'horitzó real del relleu de 5 m de l'ICGC (muntanyes del davant que el tapen). La nota de la zona és la del millor sector.</p>
-      <p><b>Orientació:</b> la d'OpenStreetMap (etiqueta climbing:orientation) si hi és; si no, <b>estimada amb el relleu</b> (cap on baixa el terreny al voltant del punt). El relleu suavitza les parets verticals i el punt d'OSM pot estar una mica desplaçat: si no és bona, corregeix-la a «Corregeix l'orientació» (només en aquest mòbil) o, millor, posa l'etiqueta a OpenStreetMap.</p>`],
+      <p><b>Orientació:</b> la d'OpenStreetMap (etiqueta climbing:orientation) si hi és; si no, <b>estimada amb el relleu</b> (cap on baixa el terreny al voltant del punt). El relleu suavitza les parets verticals i el punt d'OSM pot estar una mica desplaçat: si no és bona, corregeix-la a «Corregeix l'orientació». La correcció val només per a aquest mòbil fins que prems <b>«Proposa-la a tothom»</b>: quan una persona revisora l'aprova, la veu tothom (i és la que mana sobre la d'OSM o la del relleu).</p>`],
     prova: ["Dades de prova", `
       <p>Aquesta zona és del catàleg provisional: coordenades i altitud aproximades (centre de la zona) i encara sense parets revisades.</p>
       <p>El veredicte és per a tota la zona. Traça una paret per tenir-ne el sol i l'ombra reals.</p>`]
