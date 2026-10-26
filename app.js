@@ -484,11 +484,6 @@ map.on("load", () => {
   map.addLayer({id:"draw-pt", type:"circle", source:"draw", filter:["==", "$type", "Point"], paint:{"circle-radius":7, "circle-color":"#ffb000", "circle-stroke-color":"#000", "circle-stroke-width":2}});
   // sectors d'OpenStreetMap: punts blancs des del zoom 11 (els noms, des del 13)
   map.addSource("sectors", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
-  // cap on mira cada sector: fletxa que surt del punt (més clara si l'orientació és calculada amb el relleu)
-  map.addSource("sectorArrows", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
-  map.addLayer({id:"sector-arrow", type:"symbol", source:"sectorArrows", minzoom:12,
-    layout:{"icon-image":"wall-arrow", "icon-rotate":["get", "az"], "icon-rotation-alignment":"map", "icon-allow-overlap":true, "icon-offset":[0, -30],
-      "icon-size":["interpolate", ["linear"], ["zoom"], 12, 0.45, 17, 0.8]}, paint:{"icon-opacity":["case", ["get", "est"], 0.7, 1]}});
   map.addLayer({id:"sector-pt", type:"circle", source:"sectors", minzoom:11,
     paint:{"circle-radius":["interpolate", ["linear"], ["zoom"], 11, 4, 16, 8], "circle-color":"#ffffff", "circle-stroke-color":"#1b1f18", "circle-stroke-width":2}});
   map.on("click", "sector-pt", e => { if(drawing) return; const p = e.features[0].properties; selSector = p.id; openZone(p.zone); });
@@ -528,23 +523,27 @@ function renderSectors(){
   const f = [];
   shown().forEach(z => (z.sectors || []).forEach(s => f.push({type:"Feature", properties:{id:s.id, zone:z.id, name:s.name || ""}, geometry:{type:"Point", coordinates:[s.lon, s.lat]}})));
   map.getSource("sectors").setData({type:"FeatureCollection", features:f});
-  const ar = [];
-  shown().forEach(z => secFaces(z).forEach(x => ar.push({type:"Feature", properties:{az:x.az, est:x.w.est}, geometry:{type:"Point", coordinates:[x.w.sector.lon, x.w.sector.lat]}})));
-  if(map.getSource("sectorArrows")) map.getSource("sectorArrows").setData({type:"FeatureCollection", features:ar});
   sectorLabels();
 }
-// Noms dels sectors (etiquetes HTML: l'estil del mapa no porta tipus de lletra), només de prop i fins a 60
+// Noms dels sectors (etiquetes HTML: l'estil del mapa no porta tipus de lletra), només de prop i fins a 60.
+// Al final, cap on mira: «Can Gueli – SE» (diverses cares: «– N/E»; sense nom, només «SE»)
 const secLbl = {}, secOn = new Set();
+function secOriTxt(z){ const m = {}; secFaces(z).forEach(x => (m[x.w.id] = m[x.w.id] || []).push(cardOf(x.az))); return m; }
 function sectorLabels(){
   const on = {}, b = map.getBounds();
   if(map.getZoom() >= 13){
     let n = 0;
-    for(const z of shown()) for(const s of (z.sectors || [])){
-      if(!s.name || n >= 60 || !b.contains([s.lon, s.lat])) continue;
-      n++; let m = secLbl[s.id];
-      if(!m){ const el = document.createElement("div"); el.className = "seclbl"; el.textContent = s.name;
-        m = secLbl[s.id] = new maplibregl.Marker({element: el, anchor: "left", offset: [9, 0]}).setLngLat([s.lon, s.lat]); }
-      on[s.id] = m;
+    for(const z of shown()){ const ori = secOriTxt(z);
+      for(const s of (z.sectors || [])){
+        const o = ori[s.id] ? [...new Set(ori[s.id])].join("/") : "";
+        if((!s.name && !o) || n >= 60 || !b.contains([s.lon, s.lat])) continue;
+        n++; let m = secLbl[s.id];
+        if(!m){ const el = document.createElement("div"); el.className = "seclbl";
+          m = secLbl[s.id] = new maplibregl.Marker({element: el, anchor: "left", offset: [9, 0]}).setLngLat([s.lon, s.lat]); }
+        const t = s.name ? s.name + (o ? " – " + o : "") : o;
+        if(m.getElement().textContent !== t) m.getElement().textContent = t;
+        on[s.id] = m;
+      }
     }
   }
   for(const id in secLbl){ if(on[id] && !secOn.has(id)){ secLbl[id].addTo(map); secOn.add(id); } else if(!on[id] && secOn.has(id)){ secLbl[id].remove(); secOn.delete(id); } }
@@ -744,11 +743,12 @@ function sectorsHTML(z, ev, best){
     ss.map(s => { const ll = `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`, nm = s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), href = mapHrefOf(s.lat, s.lon, nm);
       const fs = ev.segs.filter(x => x.w.sector === s);
       const face = fs.map(x => { const p = sunPlan(x.rows, dayKey);
-        return `<div class="sface"><div class="wh">${arrowSVG(x.az)}<span>Mira al <b>${cardOf(x.az)}</b> (${Math.round(x.az)}°)</span>` +
+        return `<div class="sface"><div class="wh"><span>Mira al <b>${cardOf(x.az)}</b> (${Math.round(x.az)}°)</span>` +
           `<small class="muted">${ORI_SRC[x.src] || "OpenStreetMap"}</small>${oriPropHTML(x)}` +
           (best && best.key === x.key ? `<span class="wtag lv-ok">Millor</span>` : "") + `</div>${sunBarHTML(p, dayKey)}` +
           `<details class="more"><summary>Corregeix l'orientació</summary>${azFixHTML(x.key, azFix[x.key])}</details></div>`; }).join("");
-      return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
+      const ot = [...new Set(fs.map(x => cardOf(x.az)))].join("/");
+      return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}${ot ? " – " + ot : ""}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
         `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (href ? `<a class="btn sm" href="${href}">Mapa</a>` : "") +
         (face || `<div class="sface"><small class="muted">Orientació desconeguda (terreny massa pla o fora del relleu de Catalunya)</small></div>`) + `</li>`; }).join("") +
     `</ul><p class="note">Sectors d'OpenStreetMap (© col·laboradors d'OSM, ODbL). Si en falta algun o està mal situat, es pot corregir a OpenStreetMap.</p></details>`;
@@ -857,7 +857,7 @@ $("zBody").addEventListener("click", e => {
   const a = e.target.closest(".azfix button[data-az]");
   if(a){ const box = a.parentElement, k = box.dataset.wall + ":" + box.dataset.seg;
     if(a.dataset.az === "auto") delete azFix[k]; else azFix[k] = +a.dataset.az;
-    store.set("cem_azfix", azFix); renderWalls(); renderAll(); renderSectors(); return; }
+    store.set("cem_azfix", azFix); renderWalls(); renderAll(); return; }
   const x = e.target.closest("[data-exp] button[data-v]");
   if(x){ const w = userWalls.find(w => w.id === x.parentElement.dataset.exp);
     if(w){ w.exp = x.dataset.v; saveWalls(); renderAll(); } else msg("Aquesta paret és de tothom: per canviar-ne l'exposició, traça-la i proposa-la de nou.", true); return; }
