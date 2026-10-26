@@ -6,6 +6,8 @@
 // roca calcària), amb els llindars per defecte i roba normal, per a cada combinació de modalitat (esportiva |
 // clàssica) i persona (escalant | assegurant), cada dia i cada franja (matí | tarda | dia).
 // El model NO es copia: el carrega tools/app-model.mjs a partir d'app.js.
+// També hi va «rain»: mil·límetres previstos a cada punt per dia i franja (× 10, 255 = sense dades), per a la capa
+// Pluja els dies que no són avui (heat.js). Surt de la mateixa previsió: cap crida més a Open-Meteo.
 import fs from "node:fs";
 import {M, MOCK, getOM, sleep} from "./app-model.mjs";
 
@@ -33,13 +35,18 @@ const url = b => "https://api.open-meteo.com/v1/forecast?latitude=" + b.map(p =>
 // ---------- càlcul ----------
 const COMBOS = [["esportiva", "climb"], ["esportiva", "belay"], ["classica", "climb"], ["classica", "belay"]];
 const SL = ["am", "pm", "dia"], today = new Intl.DateTimeFormat("en-CA", {timeZone: M.TZ}).format(new Date());
-let days = null; const val = {};          // val["mod|role"][dia][franja] = Uint8Array(P.length): nota × 10, 255 = sense dades
+let days = null; const val = {}, rain = {};
+const RAIN_H = {am: [8, 13], pm: [14, 19], dia: [8, 19]};   // com a heat.js          // val["mod|role"][dia][franja] = Uint8Array(P.length): nota × 10, 255 = sense dades
 for(let n = 0; n < P.length; n += 50){
   const b = P.slice(n, n + 50), arr = await getOM(url(b)), out = {zones: {}}, fz = b.map((p, x) => ({id: "c" + (n + x)}));
   M.parseOM(arr, fz, out);
   b.forEach((p, x) => {
     const o = out.zones[fz[x].id], z = {id: fz[x].id, lat: p.lat, lon: p.lon, alt: arr[x].elevation ?? 500, rock: "calcaria"};
     if(!days) days = [...new Set(o.loc.map(l => l.key))].filter(k => k >= today).sort().slice(0, DAYS);
+    days.forEach(d => { rain[d] = rain[d] || Object.fromEntries(SL.map(s => [s, new Uint8Array(P.length).fill(255)]));
+      SL.forEach(s => { const [h0, h1] = RAIN_H[s]; let mm = 0, k = 0;
+        o.t.forEach((t, i) => { const l = o.loc[i]; if(l.key === d && l.h >= h0 && l.h <= h1){ mm += o.P[i] || 0; k++; } });
+        if(k) rain[d][s][n + x] = Math.min(254, Math.round(mm * 10)); }); });
     COMBOS.forEach(([m, r]) => {
       M.set(m, r);
       const ev = {z, o, zoneRows: M.evalSeries(z, null, null, null, o), segs: []}, c = val[m + "|" + r] = val[m + "|" + r] || {};
@@ -53,6 +60,7 @@ for(let n = 0; n < P.length; n += 50){
 const b64 = u => Buffer.from(u).toString("base64");
 const J = {v: 1, at: Date.now(), step: STEP, days, src: MOCK ? "mock" : "open-meteo",
   cells: P.flatMap(p => [p.i, p.j]),
+  rain: Object.fromEntries(Object.entries(rain).map(([d, s]) => [d, Object.fromEntries(SL.map(x => [x, b64(s[x])]))])),
   vals: Object.fromEntries(Object.entries(val).map(([k, c]) => [k, Object.fromEntries(Object.entries(c).map(([d, s]) => [d, Object.fromEntries(SL.map(x => [x, b64(s[x])]))]))]))};
 fs.writeFileSync(OUT, JSON.stringify(J));
 console.log(`\n${OUT}: ${P.length} punts · ${days.length} dies · ${(fs.statSync(OUT).size / 1024).toFixed(0)} kB`);

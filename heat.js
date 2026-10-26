@@ -6,6 +6,8 @@
 // Font de les notes: primer heat.json, que GitHub Actions calcula cada 3 h per a totes les zones (tools/heat-build.mjs,
 // branca «dades»), amb els llindars per defecte i roba normal. Els punts que no hi són (zones noves) i els casos en
 // què el fitxer no arriba es calculen al mòbil amb Open-Meteo, com abans.
+// També pinta la PLUJA PREVISTA (Capes ▸ Pluja) quan el dia enfocat no és avui: mil·límetres de la franja a cada
+// punt de la mateixa graella (heat.json la porta a «rain»; si no, de la previsió baixada al mòbil). Avui mana el radar.
 "use strict";
 window.CEM_H = (function(){
   const STEP = 0.1;                  // graus entre punts de la graella (~11 × 8 km)
@@ -47,7 +49,8 @@ window.CEM_H = (function(){
       "&past_days=3&forecast_days=" + DAYS + "&wind_speed_unit=kmh";
   }
   async function fetchMissing(need){
-    const now = Date.now(), miss = [...need.values()].filter(p => { const k = kOf(p.i, p.j), c = cells.get(k); return !inPre(k) && (!c || now - c.at > TTL); });
+    const now = Date.now(), miss = [...need.values()].filter(p => { const k = kOf(p.i, p.j), c = cells.get(k);
+      return !(inPre(k) && (!rainOn() || pre.rain)) && (!c || now - c.at > TTL); });
     if(!miss.length) return;
     note(`Carregant la capa… 0/${miss.length}`);
     for(let n = 0; n < miss.length; n += 50){
@@ -67,7 +70,7 @@ window.CEM_H = (function(){
   function usePre(j, from){
     if(!j || j.v !== 1 || !Array.isArray(j.cells)) return false;
     const idx = new Map(); for(let n = 0; n < j.cells.length; n += 2) idx.set(kOf(j.cells[n], j.cells[n + 1]), n / 2);
-    pre = {at: j.at, days: j.days, idx, vals: j.vals, dec: new Map(), from}; return true;
+    pre = {at: j.at, days: j.days, idx, vals: j.vals, rain: j.rain || null, dec: new Map(), from}; return true;
   }
   async function loadPre(){
     if(Date.now() - preTried < PRE_TTL && pre) return;
@@ -107,6 +110,34 @@ window.CEM_H = (function(){
     return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
   }
 
+  // ---------- pluja prevista ----------
+  // Capa «Pluja» activa i dia enfocat diferent d'avui (avui es veu el radar de RainViewer, a app.js)
+  const rainOn = () => !!ly.radar && dayKey !== localOf(Date.now()).key;
+  const RAIN_H = {am:[8, 13], pm:[14, 19], dia:[8, 19]};   // com a tools/heat-build.mjs
+  // mil·límetres previstos en un punt per al dia enfocat i la franja (null = sense dades)
+  function rainVal(k, c){
+    if(inPre(k) && pre.rain){
+      const dk = "rain|" + dayKey + "|" + slot; let u = pre.dec.get(dk);
+      if(u === undefined){ const b = pre.rain[dayKey] && pre.rain[dayKey][slot]; u = b ? Uint8Array.from(atob(b), ch => ch.charCodeAt(0)) : null; pre.dec.set(dk, u); }
+      if(u && u[pre.idx.get(k)] !== 255) return u[pre.idx.get(k)] / 10;
+    }
+    if(!c || !c.o) return null;
+    const [h0, h1] = RAIN_H[slot]; let mm = 0, n = 0;
+    c.o.t.forEach((t, i) => { const l = c.o.loc[i]; if(l.key === dayKey && l.h >= h0 && l.h <= h1){ mm += c.o.P[i] || 0; n++; } });
+    return n ? mm : null;
+  }
+  // Colors com un radar (blau → verd → groc → vermell). Amb la capa d'idoneïtat a sota, en gris fosc (com el radar).
+  const RAIN_ST = [[0.2, [170, 215, 255]], [1, [70, 150, 255]], [3, [30, 90, 215]], [6, [30, 170, 80]], [10, [240, 200, 0]], [18, [255, 120, 0]], [30, [215, 0, 40]]];
+  function rainCol(mm){
+    if(mm < 0.2) return null;
+    let c = RAIN_ST[RAIN_ST.length - 1][1];
+    for(let s = 1; s < RAIN_ST.length; s++) if(mm <= RAIN_ST[s][0]){ const [a0, c0] = RAIN_ST[s - 1], [a1, c1] = RAIN_ST[s], t = (mm - a0) / (a1 - a0);
+      c = c0.map((x, i) => x + (c1[i] - x) * t); break; }
+    const a = clamp((mm - 0.2) / 0.8, 0.35, 1);
+    if(ly.heat){ const gr = 70 - Math.min(40, mm * 3); return [gr, gr, gr, a * 0.75]; }
+    return [c[0], c[1], c[2], a];
+  }
+
   // Colors: els mateixos dels marcadors (segueixen tema i daltonisme), en rampa contínua
   function rgb(v){ const c = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
     const h = c.replace("#", ""); return [0, 2, 4].map(x => parseInt(h.substr(x, 2), 16)); }
@@ -119,21 +150,36 @@ window.CEM_H = (function(){
   const mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
   const latOf = y => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) / RAD;
 
-  let canvas = null, srcOn = false;
+  const canv = {};
   function draw(){
+    drawRain();
     if(!ly.heat || !DATA || !map.getLayer("zones-hit")) return hide();
     const zs = zonesNear(), need = needed(zs);
     if(!need.size || need.size > MAXC){ hide(); if(need.size > MAXC) note("Acosta't una mica per veure la capa de colors."); return; }
+    const col = ramp();
+    raster("heat", zs, need, k => score(k, cells.get(k)), sc => { if(sc < thr) return null; const c = col(sc); return [c[0], c[1], c[2], 1]; }, OPAC);
+    $("heatLeg").hidden = false;
+  }
+  function drawRain(){
+    const L = $("rainLeg");
+    if(!rainOn() || !DATA || !map.getLayer("zones-hit")){ if(map.getLayer("rainfc")) map.setLayoutProperty("rainfc", "visibility", "none"); if(L) L.hidden = true; return; }
+    const zs = zonesNear(), need = needed(zs);
+    if(!need.size || need.size > MAXC){ if(map.getLayer("rainfc")) map.setLayoutProperty("rainfc", "visibility", "none"); if(L) L.hidden = true; return; }
+    raster("rainfc", zs, need, k => rainVal(k, cells.get(k)), rainCol, 0.8);
+    if(L){ L.hidden = false; L.classList.toggle("grey", !!ly.heat); $("rainLegT").textContent = "Pluja prevista · " + dayLbl(dayKey, true).toLowerCase() + " · " + FR_TXT[slot].toLowerCase(); }
+  }
+  // Pinta una imatge suavitzada de la graella per sota dels marcadors (només a prop de les zones)
+  function raster(id, zs, need, valOf, colOf, opac){
     let i0 = 1e9, i1 = -1e9, j0 = 1e9, j1 = -1e9;
     need.forEach(p => { i0 = Math.min(i0, p.i); i1 = Math.max(i1, p.i); j0 = Math.min(j0, p.j); j1 = Math.max(j1, p.j); });
     const ni = i1 - i0 + 1, nj = j1 - j0 + 1, V = new Float32Array(ni * nj).fill(NaN);
-    need.forEach(p => { const k = kOf(p.i, p.j), s = score(k, cells.get(k)); if(s != null) V[(p.i - i0) * nj + (p.j - j0)] = s; });
+    need.forEach(p => { const k = kOf(p.i, p.j), s = valOf(k); if(s != null) V[(p.i - i0) * nj + (p.j - j0)] = s; });
     // imatge: columnes uniformes en longitud, files uniformes en Mercator (com el mapa)
     const W = nj * PX, H = ni * PX;
     const west = (j0 - 0.5) * STEP, east = (j1 + 0.5) * STEP, north = (i1 + 0.5) * STEP, south = (i0 - 0.5) * STEP;
     const yN = mercY(north), yS = mercY(south);
-    canvas = canvas || document.createElement("canvas"); canvas.width = W; canvas.height = H;
-    const g = canvas.getContext("2d"), img = g.createImageData(W, H), d = img.data, col = ramp();
+    const canvas = canv[id] = canv[id] || document.createElement("canvas"); canvas.width = W; canvas.height = H;
+    const g = canvas.getContext("2d"), img = g.createImageData(W, H), d = img.data;
     const zl = zs.map(z => [z.lat, z.lon, Math.cos(z.lat * RAD)]);
     for(let y = 0; y < H; y++){
       const lat = latOf(yN + (yS - yN) * (y + 0.5) / H), fi = lat / STEP - i0, ia = Math.floor(fi), ty = fi - ia;
@@ -149,25 +195,26 @@ window.CEM_H = (function(){
           const a = ia + di, b = ja + dj; if(a < 0 || b < 0 || a >= ni || b >= nj) continue;
           const v = V[a * nj + b]; if(!isNaN(v) && w > 0){ sw += w; sv += v * w; } }
         if(sw < 0.15) continue;
-        const sc = sv / sw; if(sc < thr) continue;
+        const c = colOf(sv / sw); if(!c) continue;
         const t = clamp((R_OUT - dm) / (R_OUT - R_IN), 0, 1), al = t * t * (3 - 2 * t);
-        const c = col(sc), o = (y * W + x) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = Math.round(255 * al);
+        const o = (y * W + x) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = Math.round(255 * al * c[3]);
       }
     }
     g.putImageData(img, 0, 0);
     const coords = [[west, north], [east, north], [east, south], [west, south]], u = canvas.toDataURL();
-    const src = map.getSource("heat");
+    const src = map.getSource(id);
     if(src) src.updateImage({url: u, coordinates: coords});
     else{
-      map.addSource("heat", {type:"image", url: u, coordinates: coords});
-      map.addLayer({id:"heat", type:"raster", source:"heat", paint:{"raster-opacity": OPAC, "raster-fade-duration": 0, "raster-resampling":"linear"}}, "zones-hit");
+      map.addSource(id, {type:"image", url: u, coordinates: coords});
+      // la pluja sempre per sobre de la capa d'idoneïtat
+      const before = id === "heat" && map.getLayer("rainfc") ? "rainfc" : "zones-hit";
+      map.addLayer({id, type:"raster", source:id, paint:{"raster-opacity": opac, "raster-fade-duration": 0, "raster-resampling":"linear"}}, before);
     }
-    map.setLayoutProperty("heat", "visibility", "visible"); srcOn = true;
-    $("heatLeg").hidden = false;
+    map.setLayoutProperty(id, "visibility", "visible");
   }
   function hide(){
     if(map.getLayer("heat")) map.setLayoutProperty("heat", "visibility", "none");
-    srcOn = false; const l = $("heatLeg"); if(l) l.hidden = true;
+    const l = $("heatLeg"); if(l) l.hidden = true;
   }
   function note(t, err){ const n = $("heatNote"); if(!n) return; n.hidden = !t; if(t){ n.textContent = t; n.classList.toggle("err", !!err); } }
 
@@ -177,14 +224,14 @@ window.CEM_H = (function(){
   }
   async function run(){
     renderUI();
-    if(!ly.heat || !DATA){ hide(); note(null); return; }
+    if((!ly.heat && !rainOn()) || !DATA){ hide(); drawRain(); note(null); return; }
     if(busy){ again = true; return; }
     busy = true;
     try{ await loadPre(); draw();
       const need = needed(zonesNear());
       if(need.size && need.size <= MAXC) await fetchMissing(need);
-      lastErr = false; note(pre ? "Capa calculada fa " + ago(pre.at) + (pre.from === "copia" ? " (còpia desada, sense connexió)." : ".") : null);
-    }catch(e){ lastErr = true; note("No s'ha pogut carregar tota la capa de colors (sense connexió?).", true); }
+      lastErr = false; note(pre && ly.heat ? "Capa calculada fa " + ago(pre.at) + (pre.from === "copia" ? " (còpia desada, sense connexió)." : ".") : null);
+    }catch(e){ lastErr = true; note("No s'ha pogut carregar tota la " + (ly.heat ? "capa de colors" : "pluja prevista") + " (sense connexió?).", true); }
     busy = false; draw();
     if(again){ again = false; run(); }
   }

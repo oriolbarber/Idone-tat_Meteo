@@ -431,10 +431,13 @@ function applyLayers(){
   if(map.getLayer("slope")) map.setLayoutProperty("slope", "visibility", ly.slope ? "visible" : "none");
   ["wall-line", "wall-arrow"].forEach(id => map.getLayer(id) && map.setLayoutProperty(id, "visibility", ly.walls ? "visible" : "none"));
   $("lySlope").checked = ly.slope; $("lyRadar").checked = ly.radar; $("lyWind").checked = ly.wind; $("lyWalls").checked = ly.walls;
-  radar(ly.radar);
+  radar(radarNow());
   renderMarkers();
   window.CEM_H && CEM_H.update();
 }
+// Capa «Pluja»: si el dia enfocat és avui, el radar de RainViewer (la pluja d'ara); un altre dia, la pluja prevista
+// d'aquell dia i franja, que pinta heat.js amb colors de radar.
+const radarNow = () => !!ly.radar && dayKey === localOf(Date.now()).key;
 // Radar de pluja (RainViewer): últim fotograma disponible; només fins a zoom 7 natiu
 // Amb la capa de colors activa, el radar es pinta en gris fosc (com una ombra de núvol): els seus blaus i grocs
 // es barrejaven amb el verd/vermell de la capa i, amb daltonisme, el blau del radar era el mateix que «recomanat».
@@ -870,7 +873,7 @@ document.addEventListener("click", e => { const b = e.target.closest && e.target
   if(window.CEM_CLOUD) CEM_CLOUD.propose(b.dataset.propose); else msg("El compte encara s'està carregant. Torna-ho a provar.", true); });
 function setRole(r){ role = r; store.set("cem_role", role); renderAll(); renderPanels(); }
 
-function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); window.CEM_H && CEM_H.update(); }
+function renderAll(){ if(!DATA) return; renderDays(); renderMarkers(); renderSheet(); radar(radarNow()); window.CEM_H && CEM_H.update(); }
 
 /* ---------- CALENDARI: dies de la sortida ---------- */
 function openSheet(id){ ["calSheet", "rankSheet", "infoSheet"].forEach(x => $(x).hidden = x !== id); if(id === "calSheet") renderCal(); else renderRank(); }
@@ -950,7 +953,8 @@ function infoContent(k){
       <p>Amb la franja <b>Dia</b>, la rodona es parteix: <b>esquerra = matí</b>, <b>dreta = tarda</b>. La icona del cantó és el veredicte del dia.</p>
       <p>Amb diversos dies triats, la rodona diu quants són bons (p. ex. 2/3).</p>
       <p><b>Fletxa negra:</b> cap on bufa el vent. El número del costat del nom és el vent mitjà en km/h. Els noms surten quan t'hi acostes.</p>
-      <p><b>Capa de colors</b> (Capes ▸ Idoneïtat amb colors): la nota pintada al voltant de les zones, meteo general sense orientació. Si també hi ha el radar, la pluja d'ara es veu en gris per sobre.</p>
+      <p><b>Capa de colors</b> (Capes ▸ Idoneïtat amb colors): la nota pintada al voltant de les zones, meteo general sense orientació. Si també hi ha la pluja, es veu en gris per sobre.</p>
+      <p><b>Pluja</b> (Capes ▸ Pluja): si mires <b>avui</b>, és el <b>radar</b> (la pluja que cau ara, RainViewer). Si mires <b>un altre dia</b>, és la <b>pluja prevista</b> per a aquell dia i franja, en mil·límetres, pintada com un radar al voltant de les zones (fins a 8 dies).</p>
       <p><b>Rodones amb anell:</b> diverses zones juntes; l'anell mostra el % de cada color. Toca-les per acostar-t'hi.</p>
       <p><b>Barra de dies:</b> mitjana de les zones que es veuen ara al mapa (matí | tarda). Canvia quan mous el mapa. Amb <b>vora discontínua</b>, previsió orientativa (a partir del 6è dia).</p>
       <p class="note">Mapes © ICGC (CC BY) · previsió Open-Meteo (CC BY 4.0). Més detall a Menú ▸ Fonts i avís.</p>`],

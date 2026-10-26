@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=11">
+<link rel="stylesheet" href="app.css?v=12">
 </head>
 <body>
 
@@ -57,8 +57,13 @@
   </button>
 </div>
 <div class="attr" aria-hidden="true">© ICGC · Open-Meteo</div>
+<div class="legs">
+<button class="card heat-leg rain-leg" type="button" id="rainLeg" data-info="mapa" hidden aria-label="Què vol dir la pluja prevista">
+  <span class="hl-t" id="rainLegT">Pluja prevista</span><span class="hl-bar" aria-hidden="true"></span>
+  <span class="hl-lbl"><span>0,2</span><span>1</span><span>3</span><span>6</span><span>10</span><span>18</span><span>30 mm</span></span></button>
 <button class="card heat-leg" type="button" id="heatLeg" data-info="capa" hidden aria-label="Què vol dir la capa de colors">
   <span class="hl-bar" aria-hidden="true"></span><span class="hl-lbl"><span>0</span><span>Meteo general · sense orientació</span><span>10</span></span></button>
+</div>
 <div class="card layer-panel" id="layerPanel" hidden>
   <div class="lp-row"><span class="lbl">Mapa</span>
     <div class="seg" role="group" aria-label="Mapa base" id="baseSeg">
@@ -68,7 +73,7 @@
     <label class="heat-thr" id="heatThrRow" hidden>Amaga les notes per sota de <b id="heatThrV">0</b>
       <input type="range" id="heatThr" min="0" max="9" step="1" value="0" aria-label="Amaga les notes per sota de"></label>
     <label class="chk"><input type="checkbox" id="lySlope"> Pendents</label>
-    <label class="chk"><input type="checkbox" id="lyRadar"> Radar de pluja</label>
+    <label class="chk"><input type="checkbox" id="lyRadar"> Pluja <small class="muted">(radar avui · previsió altres dies)</small></label>
     <label class="chk"><input type="checkbox" id="lyWind" checked> Vent a les zones</label>
     <label class="chk"><input type="checkbox" id="lyWalls" checked> Parets</label>
     <label class="chk"><input type="checkbox" id="lyFav"> Només les preferides ★</label>
@@ -267,9 +272,9 @@
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
 <script src="zones-osm.js?v=1"></script>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 <script src="cloud.js?v=3"></script>
 <script src="restr.js?v=1"></script>
-<script src="heat.js?v=3"></script>
+<script src="heat.js?v=4"></script>
 </body>
 </html>

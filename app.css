@@ -384,10 +384,15 @@ a.btn.pri{color:var(--on-accent)}
 .panel{left:auto;width:min(440px, calc(100% - 52px));box-shadow:-8px 0 24px rgba(0,0,0,.25)}
 
 /* capa de colors (heat.js): llegenda a baix a l'esquerra, sobre l'escala */
-.heat-leg{position:fixed;z-index:5;left:8px;bottom:calc(var(--daybar-h,96px) + 30px + env(safe-area-inset-bottom,0px));
+.legs{position:fixed;z-index:5;left:8px;bottom:calc(var(--daybar-h,96px) + 30px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;align-items:flex-start;pointer-events:none}
+.legs>*{pointer-events:auto}
+.heat-leg{position:static;
   padding:6px 10px;display:flex;flex-direction:column;gap:3px;width:min(230px,calc(100vw - 120px));border:1px solid var(--line);cursor:pointer;color:var(--ink);font:inherit}
 .heat-leg .hl-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--no) 0%,var(--no) 30%,var(--mid) 45%,var(--mid) 60%,var(--ok) 75%,var(--ok) 100%);opacity:.75}
 .heat-leg .hl-lbl{display:flex;justify-content:space-between;gap:6px;font-size:10.5px;font-weight:600;color:var(--muted)}
+.rain-leg.grey .hl-bar{filter:grayscale(1) brightness(.6)}
+.rain-leg .hl-t{font-size:11px;font-weight:800;text-align:left}
+.rain-leg .hl-bar{opacity:.85;background:linear-gradient(90deg,#aad7ff 0%,#4696ff 16%,#1e5ad7 33%,#1eaa50 50%,#f0c800 66%,#ff7800 83%,#d70028 100%)}
 .heat-thr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:0 0 6px 32px;font-size:14px;color:var(--muted)}
 .heat-thr b{color:var(--ink)}
 .heat-thr input{flex-basis:100%;accent-color:var(--accent);min-height:36px}
