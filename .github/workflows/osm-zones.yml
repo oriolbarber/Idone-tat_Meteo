@@ -8,15 +8,20 @@ concurrency: {group: osm-zones, cancel-in-progress: false}
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}   # l'historial cal per saber quants dies fa de l'última actualització
       - uses: actions/setup-node@v4
         with: {node-version: 22}
       - name: Baixa d'OpenStreetMap (Overpass)
+        id: raw
         run: bash tools/osm-raw.sh
       - name: Construeix zones-osm.js
+        if: steps.raw.outputs.skip != '1'
         run: node tools/osm-build.mjs osm-raw.json | tee "$RUNNER_TEMP/n.txt"; echo "::notice::$(cat $RUNNER_TEMP/n.txt)"
       - name: Desa els canvis
+        if: steps.raw.outputs.skip != '1'
         run: |
           git add zones-osm.js
           if git diff --cached --quiet; then echo "Sense canvis"; exit 0; fi
