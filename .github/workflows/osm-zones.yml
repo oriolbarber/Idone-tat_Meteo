@@ -17,6 +17,9 @@ jobs:
       - name: Baixa d'OpenStreetMap (Overpass)
         id: raw
         run: bash tools/osm-raw.sh
+      - name: Llibreria per llegir les rajoles PNG del relleu
+        if: steps.raw.outputs.skip != '1'
+        run: npm i --no-save --no-audit --no-fund pngjs@7
       - name: Construeix zones-osm.js
         if: steps.raw.outputs.skip != '1'
         run: node tools/osm-build.mjs osm-raw.json | tee "$RUNNER_TEMP/n.txt"; echo "::notice::$(cat $RUNNER_TEMP/n.txt)"

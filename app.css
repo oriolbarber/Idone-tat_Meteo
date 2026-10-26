@@ -202,8 +202,21 @@ body.zlo .zm .n{display:none}
 .wall .wh b{margin-right:auto}
 .arrow{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--line)}
 .sunbar{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:2px}
-.sunbar i{height:16px;border-radius:3px;background:var(--shade);opacity:.35}
-.sunbar i.s{background:var(--sun);opacity:1}
+.sunbar i,.sunleg i{height:16px;border-radius:3px;background:var(--shade);opacity:.35}
+.sunbar i.s,.sunleg i.s{background:var(--sun);opacity:1}
+/* sol que molesta: groc amb ratlles (no només color, per al daltonisme) · ombra freda: ratlles horitzontals · nit: buit */
+.sunbar i.sh,.sunleg i.sh{background:repeating-linear-gradient(135deg,var(--no) 0 3px,var(--sun) 3px 6px);opacity:1}
+.sunbar i.o,.sunleg i.o{background:var(--shade);opacity:.45}
+.sunbar i.c,.sunleg i.c{background:repeating-linear-gradient(0deg,var(--shade) 0 2px,transparent 2px 4px);opacity:1;box-shadow:inset 0 0 0 1px var(--shade)}
+.sunbar i.n{background:transparent;opacity:1;box-shadow:inset 0 0 0 1px var(--line)}
+.sunleg{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:.78em;color:var(--muted);font-weight:600;margin:2px 0 6px}
+.sunleg span{display:inline-flex;align-items:center;gap:5px}
+.sunleg i{display:inline-block;width:18px;height:12px}
+.suntx{margin:4px 0 0;display:flex;flex-direction:column;gap:1px;font-weight:700}
+.suntx small{color:var(--muted);font-weight:600;font-size:.8em}
+.seclist li{flex-wrap:wrap}
+.sface{flex-basis:100%;display:flex;flex-direction:column;gap:4px;padding:4px 0 2px}
+.sface .wh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sunbar i.cur{outline:2px solid var(--ink);outline-offset:1px}
 .sunlbl{display:flex;justify-content:space-between;font-size:.7em;color:var(--muted);font-weight:600}
 .azfix{display:flex;gap:4px;flex-wrap:wrap}
@@ -378,3 +391,4 @@ a.btn.pri{color:var(--on-accent)}
 .heat-thr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:0 0 6px 32px;font-size:14px;color:var(--muted)}
 .heat-thr b{color:var(--ink)}
 .heat-thr input{flex-basis:100%;accent-color:var(--accent);min-height:36px}
+.sface details.more summary{min-height:40px;font-weight:600;font-size:.9em;color:var(--muted)}

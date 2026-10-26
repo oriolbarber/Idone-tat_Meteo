@@ -305,13 +305,26 @@ function slotVerdict(rows, o, key, s){
   return {lv: lvOf(sc, bl), sc: bl ? Math.min(sc, 2) : sc, why, rows: rs, block: bl ? bl.block : null};
 }
 
-// Avaluació completa d'una zona: zona sencera o la millor paret
+// Sectors d'OSM amb orientació (zones-osm.js: f = cares {az, hz en base64}, o = "osm" etiqueta | "dem" calculada amb
+// el relleu): cada cara s'avalua com una paret. azFix la pot corregir en aquest mòbil (clau "s:<sector>:<cara>").
+function secFaces(z){
+  const out = [], fx = typeof azFix === "undefined" ? {} : azFix;
+  (z.sectors || []).forEach(s => (s.f || []).forEach((f, i) => {
+    if(f.hz && f._hz === undefined){ try{ f._hz = Array.from(atob(f.hz), ch => ch.charCodeAt(0)); }catch(e){ f._hz = null; } }
+    const key = "s:" + s.id + ":" + i, fix = fx[key], az = fix != null ? fix : f.az;
+    // horitzó calculat per a una orientació molt diferent: no serveix (taparia el sol que sí que hi toca)
+    const hz = fix != null && Math.abs(((fix - f.az + 540) % 360) - 180) > 30 ? null : f._hz;
+    out.push({w: {id: s.id, name: s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), segs: s.f, sector: s, est: s.o === "dem"}, i, az, hz, key});
+  }));
+  return out;
+}
+// Avaluació completa d'una zona: zona sencera o la millor paret (parets traçades i sectors amb orientació)
 const cache = new Map();
 function zoneEval(z){
   const k = [z.id, mod, role, clo, JSON.stringify(crit), JSON.stringify(azFix), userWalls.length, DATA.at].join("|");
   if(cache.has(k)) return cache.get(k);
   const ws = wallsOf(z), o = DATA.zones[z.id];
-  const targets = ws.length ? ws.flatMap(w => w.segs.map((s, i) => ({w, i, az: segAz(w, i), hz: s.hz}))).filter(x => x.az != null) : [];
+  const targets = ws.flatMap(w => w.segs.map((s, i) => ({w, i, az: segAz(w, i), hz: s.hz}))).filter(x => x.az != null).concat(secFaces(z));
   const zoneRows = evalSeries(z, null, null, null);
   const segs = targets.map(x => ({...x, rows: evalSeries(z, x.az, x.hz, x.w.exp)}));
   const r = {z, o, zoneRows, segs};
@@ -467,6 +480,11 @@ map.on("load", () => {
   map.addLayer({id:"draw-pt", type:"circle", source:"draw", filter:["==", "$type", "Point"], paint:{"circle-radius":7, "circle-color":"#ffb000", "circle-stroke-color":"#000", "circle-stroke-width":2}});
   // sectors d'OpenStreetMap: punts blancs des del zoom 11 (els noms, des del 13)
   map.addSource("sectors", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  // cap on mira cada sector: fletxa que surt del punt (més clara si l'orientació és calculada amb el relleu)
+  map.addSource("sectorArrows", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addLayer({id:"sector-arrow", type:"symbol", source:"sectorArrows", minzoom:12,
+    layout:{"icon-image":"wall-arrow", "icon-rotate":["get", "az"], "icon-rotation-alignment":"map", "icon-allow-overlap":true, "icon-offset":[0, -30],
+      "icon-size":["interpolate", ["linear"], ["zoom"], 12, 0.45, 17, 0.8]}, paint:{"icon-opacity":["case", ["get", "est"], 0.7, 1]}});
   map.addLayer({id:"sector-pt", type:"circle", source:"sectors", minzoom:11,
     paint:{"circle-radius":["interpolate", ["linear"], ["zoom"], 11, 4, 16, 8], "circle-color":"#ffffff", "circle-stroke-color":"#1b1f18", "circle-stroke-width":2}});
   map.on("click", "sector-pt", e => { if(drawing) return; const p = e.features[0].properties; selSector = p.id; openZone(p.zone); });
@@ -506,6 +524,9 @@ function renderSectors(){
   const f = [];
   shown().forEach(z => (z.sectors || []).forEach(s => f.push({type:"Feature", properties:{id:s.id, zone:z.id, name:s.name || ""}, geometry:{type:"Point", coordinates:[s.lon, s.lat]}})));
   map.getSource("sectors").setData({type:"FeatureCollection", features:f});
+  const ar = [];
+  shown().forEach(z => secFaces(z).forEach(x => ar.push({type:"Feature", properties:{az:x.az, est:x.w.est}, geometry:{type:"Point", coordinates:[x.w.sector.lon, x.w.sector.lat]}})));
+  if(map.getSource("sectorArrows")) map.getSource("sectorArrows").setData({type:"FeatureCollection", features:ar});
   sectorLabels();
 }
 // Noms dels sectors (etiquetes HTML: l'estil del mapa no porta tipus de lletra), només de prop i fins a 60
@@ -657,18 +678,65 @@ function feelLv(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 
 function feelTxt(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 ? "Molt fred" : f < lo ? "Fresc" : f > hi + 6 ? "Molta calor" : f > hi ? "Calor" : "Agradable"; }
 function arrowSVG(az){ return `<span class="arrow" title="Mira al ${cardOf(az)}"><svg width="18" height="18" viewBox="0 0 24 24" style="transform:rotate(${az}deg)" aria-hidden="true"><path d="M12 3l6 14-6-3-6 3z" fill="currentColor"/></svg></span>`; }
 
+// Quan és un problema el sol (o l'ombra), hora a hora, per a una paret o un sector el dia enfocat. Fa servir la
+// previsió (núvols, temperatura, vent) i els llindars de confort de cada persona, no una temporada genèrica.
+// Classes: sh = sol que molesta (calor o roca calenta) · s = sol agradable · c = ombra freda · o = ombra agradable · n = nit
+const SUN_LBL = {sh:"sol que molesta", s:"sol agradable", c:"ombra freda", o:"ombra agradable", n:"de nit"};
+function sunPlan(rows, key){
+  const lo = crit.comfLo, hi = crit.comfHi, hrs = [];
+  for(let h = 7; h <= 21; h++){
+    const r = rows.find(r => r.loc.key === key && r.loc.h === h);
+    let c = "n";
+    if(r && r.sp.alt > 0) c = r.sunny ? (r.feel > hi || r.Trock > 24 ? "sh" : "s") : (r.feel < lo ? "c" : "o");
+    hrs.push({h, r, c});
+  }
+  const spans = test => { const out = []; let a = null;
+    hrs.forEach((x, i) => { if(test(x)){ if(a == null) a = x.h; } else if(a != null){ out.push([a, x.h]); a = null; } });
+    if(a != null) out.push([a, 22]); return out; };
+  const fmt = sp => sp.map(([a, b]) => b - a === 1 ? a + " h" : a + "–" + b + " h").join(", ");
+  const lit = spans(x => x.r && x.r.lit && x.c !== "n"), hot = spans(x => x.c === "sh"), cold = spans(x => x.c === "c"), good = spans(x => x.c === "s" || x.c === "o");
+  const sunTxt = lit.length ? "Sol a la paret " + fmt(lit) : "Sense sol directe";
+  const best = good.length ? " · millor " + fmt(good) : "";
+  let lv = "ok", txt;
+  if(hot.length){ const rk = hrs.some(x => x.c === "sh" && x.r.Trock > 32);
+    lv = good.length ? "mid" : "no"; txt = `El sol molesta ${fmt(hot)} (${rk ? "roca calenta" : "calor"})${best}`; }
+  else if(cold.length){ lv = good.length ? "mid" : "no"; txt = `Ombra freda ${fmt(cold)}${best}`; }
+  else txt = hrs.some(x => x.c === "s") ? "El sol no molesta" : hrs.some(x => x.c === "o") ? "L'ombra no molesta" : "Fora d'hores de llum";
+  return {hrs, sunTxt, lv, txt};
+}
+function sunBarHTML(p, key){
+  const nowL = localOf(Date.now());
+  return `<div class="sunbar" role="img" aria-label="${esc(p.sunTxt + ". " + p.txt)}">` +
+    p.hrs.map(x => `<i class="${x.c}${nowL.key === key && nowL.h === x.h ? " cur" : ""}" title="${x.h} h: ${SUN_LBL[x.c]}"></i>`).join("") +
+    `</div><div class="sunlbl"><span>7 h</span><span>14 h</span><span>21 h</span></div>` +
+    `<p class="suntx"><span class="tx-${p.lv}">${esc(p.txt)}</span><small>${esc(p.sunTxt)}</small></p>`;
+}
+const SUN_LEG = `<div class="sunleg">${["sh", "s", "o", "c"].map(c => `<span><i class="${c}"></i>${SUN_LBL[c]}</span>`).join("")}${INF("sol")}</div>`;
+function azFixHTML(key, cur){
+  const [w, ...rest] = [key.slice(0, key.lastIndexOf(":")), key.slice(key.lastIndexOf(":") + 1)];
+  return `<div class="azfix" data-wall="${w}" data-seg="${rest[0]}">${CARD.map((c, k) => `<button type="button" data-az="${k * 45}" aria-pressed="${cur === k * 45}">${c}</button>`).join("")}` +
+    `<button type="button" data-az="auto" aria-pressed="${cur == null}">Auto</button></div>`;
+}
+
 // Sectors de la zona (OpenStreetMap): nom i coordenades, amb «Copia» i l'app de mapes del mòbil
 function mapHrefOf(lat, lon, name){
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   return isIOS ? `https://maps.apple.com/?ll=${lat},${lon}&q=${encodeURIComponent(name)}` : /Android/.test(navigator.userAgent) ? `geo:${lat},${lon}?q=${lat},${lon}(${encodeURIComponent(name)})` : "";
 }
-function sectorsHTML(z){
+function sectorsHTML(z, ev, best){
   const ss = z.sectors || []; if(!ss.length) return "";
-  const open = ss.length <= 8 || ss.some(s => s.id === selSector);
-  return `<details class="more secs"${open ? " open" : ""}><summary>Sectors (${ss.length})${INF("osm")}</summary><ul class="seclist">` +
+  const open = ss.length <= 8 || ss.some(s => s.id === selSector), hasF = ss.some(s => s.f);
+  return `<details class="more secs"${open ? " open" : ""}><summary>Sectors (${ss.length})${INF("osm")}</summary>${hasF ? SUN_LEG : ""}<ul class="seclist">` +
     ss.map(s => { const ll = `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`, nm = s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), href = mapHrefOf(s.lat, s.lon, nm);
+      const fs = ev.segs.filter(x => x.w.sector === s);
+      const face = fs.map(x => { const p = sunPlan(x.rows, dayKey), fixed = azFix[x.key] != null;
+        return `<div class="sface"><div class="wh">${arrowSVG(x.az)}<span>Mira al <b>${cardOf(x.az)}</b> (${Math.round(x.az)}°)</span>` +
+          `<small class="muted">${fixed ? "corregida en aquest mòbil" : s.o === "dem" ? "estimada amb el relleu" : "OpenStreetMap"}</small>` +
+          (best && best.key === x.key ? `<span class="wtag lv-ok">Millor</span>` : "") + `</div>${sunBarHTML(p, dayKey)}` +
+          `<details class="more"><summary>Corregeix l'orientació</summary>${azFixHTML(x.key, azFix[x.key])}</details></div>`; }).join("");
       return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
-        `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (href ? `<a class="btn sm" href="${href}">Mapa</a>` : "") + `</li>`; }).join("") +
+        `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (href ? `<a class="btn sm" href="${href}">Mapa</a>` : "") +
+        (face || `<div class="sface"><small class="muted">Orientació desconeguda (terreny massa pla o fora del relleu de Catalunya)</small></div>`) + `</li>`; }).join("") +
     `</ul><p class="note">Sectors d'OpenStreetMap (© col·laboradors d'OSM, ODbL). Si en falta algun o està mal situat, es pot corregir a OpenStreetMap.</p></details>`;
 }
 let selSector = null;
@@ -696,7 +764,7 @@ function renderSheet(){
     return `<button type="button" class="vb ${v.lv}" data-slot="${s}" aria-pressed="${s === slot}"><span class="h"><span class="lbl">${s === "am" ? "Matí" : "Tarda"}</span>` +
       `<span class="sc">${v.sc == null ? "–" : Math.round(v.sc)}<small>/10</small></span></span>` +
       `<span class="vt tx-${v.lv}">${LV_IC[v.lv].replace("<svg", '<svg width="18" height="18"')}${LV_TXT[v.lv]}</span><span class="why">${esc(v.why)}</span>` +
-      (v.seg ? `<span class="why">Millor: ${esc(v.seg.w.name)}${v.seg.w.segs.length > 1 ? " (tram " + cardOf(v.seg.az) + ")" : ""}</span>` : "") + `</button>`; };
+      (v.seg ? `<span class="why">Millor: ${esc(v.seg.w.name)}${v.seg.w.segs.length > 1 ? (v.seg.w.sector ? " (cara " : " (tram ") + cardOf(v.seg.az) + ")" : ""}${v.seg.w.sector ? " · sector" : ""}</span>` : "") + `</button>`; };
   let h = "";
   if(selDays.length > 1){
     const P = periodEval(z);
@@ -734,23 +802,19 @@ function renderSheet(){
   h += `<div class="zloc"><span>📍 ${ll}${z.src === "provisional" ? " · aproximades" : ""}</span>` +
     `<button class="ib" type="button" data-copy="${ll}" aria-label="Copia les coordenades"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg></button>` +
     (mapHref ? `<a class="btn sm pri" href="${mapHref}">Com arribar</a>` : "") + `</div>`;
-  h += sectorsHTML(z);
+  h += sectorsHTML(z, ev, cur.seg);
   if(window.CEM_R) h += CEM_R.sheetHTML(z);
   // parets
   h += `<div class="walls">`;
-  if(!ws.length) h += `<p class="note">Encara no hi ha cap paret traçada: el veredicte és per a tota la zona (sol mitjà, sense orientació). Traça una paret per saber-ne el sol i l'ombra.</p>`;
+  if(!ws.length) h += ev.segs.length ? `<p class="note">La nota és la del millor sector amb orientació, amb el seu sol i ombra. Traça una paret si en vols una de més precisa.</p>`
+    : `<p class="note">Encara no hi ha cap paret traçada ni cap sector amb orientació: el veredicte és per a tota la zona (sol mitjà, sense orientació). Traça una paret per saber-ne el sol i l'ombra.</p>`;
   ws.forEach(w => {
     w.segs.forEach((s, i) => {
       const az = segAz(w, i), sg = ev.segs.find(x => x.w === w && x.i === i);
       h += `<div class="wall"><div class="wh"><b>${esc(w.name)}${w.segs.length > 1 ? " · tram " + (i + 1) : ""}</b>` +
         (az != null ? `${arrowSVG(az)}<span>Mira al <b>${cardOf(az)}</b> (${Math.round(az)}°)</span>` : `<span class="tx-mid">Orientació per fixar</span>`) + `</div>` +
         (i === 0 ? `<div class="wh">${wallTag(w)}</div>` : "");
-      if(sg){
-        const hrs = []; for(let hh = 7; hh <= 21; hh++){ const r = sg.rows.find(r => r.loc.key === dayKey && r.loc.h === hh); hrs.push(r); }
-        const nowL = localOf(Date.now());
-        h += `<div class="sunbar" aria-label="Sol a la paret per hores">${hrs.map((r, k) => `<i class="${r && r.lit ? "s" : ""}${nowL.key === dayKey && nowL.h === 7 + k ? " cur" : ""}" title="${7 + k} h: ${r && r.lit ? "sol" : "ombra"}"></i>`).join("")}</div>` +
-          `<div class="sunlbl"><span>7 h</span><span>☀ sol · ombra</span><span>21 h</span></div>`;
-      }
+      if(sg) h += sunBarHTML(sunPlan(sg.rows, dayKey), dayKey);
       h += `<details class="more"><summary>Corregeix l'orientació</summary><p class="note">El relleu de 5 m suavitza les parets verticals: si la fletxa no és bona, tria cap on mira la paret.</p>` +
         `<div class="azfix" data-wall="${w.id}" data-seg="${i}">${CARD.map((c, k) => `<button type="button" data-az="${k * 45}" aria-pressed="${azFix[w.id + ":" + i] === k * 45}">${c}</button>`).join("")}` +
         `<button type="button" data-az="auto" aria-pressed="${azFix[w.id + ":" + i] == null}">Auto</button></div>` +
@@ -764,7 +828,7 @@ function renderSheet(){
   h += `<details class="more"><summary>Detall per hores</summary><table class="htab"><thead><tr><th>h</th><th>Nota</th><th>Sensació</th><th>Aire</th><th>Pluja</th><th>Vent</th><th>Sol</th></tr></thead><tbody>` +
     dayRows.map(r => `<tr><td>${pad(r.loc.h)}</td><td class="sc lv-${lvOf(r.sc, r.block)}">${Math.round(r.sc)}</td><td class="tx-${feelLv(r.feel)}"><b>${Math.round(r.feel)}°</b></td><td>${Math.round(r.T)}°</td>` +
       `<td>${r.P >= 0.1 ? r.P.toFixed(1).replace(".", ",") + " mm" : Math.round(r.PP) + " %"}</td><td>${Math.round(r.wkmh)}/${Math.round(r.gust)}</td><td>${r.lit ? "☀" : r.lit === false ? "·" : "–"}</td></tr>`).join("") +
-    `</tbody></table><p class="note">Vent: mitjà / ratxa en km/h. ${cur.seg ? "Paret: " + esc(cur.seg.w.name) + "." : "Tota la zona."}</p></details>`;
+    `</tbody></table><p class="note">Vent: mitjà / ratxa en km/h. ${cur.seg ? (cur.seg.w.sector ? "Sector: " : "Paret: ") + esc(cur.seg.w.name) + "." : "Tota la zona."}</p></details>`;
   $("zBody").innerHTML = h;
 }
 $("zDays").addEventListener("click", e => { const b = e.target.closest("button[data-zday]"); if(!b) return; const k = b.dataset.zday;
@@ -779,7 +843,7 @@ $("zBody").addEventListener("click", e => {
   const a = e.target.closest(".azfix button[data-az]");
   if(a){ const box = a.parentElement, k = box.dataset.wall + ":" + box.dataset.seg;
     if(a.dataset.az === "auto") delete azFix[k]; else azFix[k] = +a.dataset.az;
-    store.set("cem_azfix", azFix); renderWalls(); renderAll(); return; }
+    store.set("cem_azfix", azFix); renderWalls(); renderAll(); renderSectors(); return; }
   const x = e.target.closest("[data-exp] button[data-v]");
   if(x){ const w = userWalls.find(w => w.id === x.parentElement.dataset.exp);
     if(w){ w.exp = x.dataset.v; saveWalls(); renderAll(); } else msg("Aquesta paret és de tothom: per canviar-ne l'exposició, traça-la i proposa-la de nou.", true); return; }
@@ -903,6 +967,14 @@ function infoContent(k){
       <p>Les zones i els sectors surten d'OpenStreetMap, el mapa obert que fan voluntaris (© col·laboradors d'OpenStreetMap, llicència ODbL). S'actualitzen cada setmana.</p>
       <p>L'app agrupa en una zona els sectors que són a menys d'1,5 km i li posa el nom de l'àrea d'escalada o del poble més proper. El punt de la zona és el centre dels seus sectors i la previsió és la d'aquest punt.</p>
       <p>Quan OSM no diu el tipus de roca, l'app fa servir calcària i hi posa un interrogant.</p>`],
+    sol: ["Quan molesta el sol", `
+      <p>Per a cada sector amb orientació, la barra diu hora a hora (de 7 a 21 h, el dia triat) si el sol toca la paret i si això és bo o dolent <b>segons la previsió d'aquell dia</b>, no segons l'estació:</p>
+      <ul><li><span class="sunleg"><span><i class="sh"></i></span></span> <b>Sol que molesta:</b> el sol toca la paret i fa massa calor (sensació per sobre de ${crit.comfHi} °C) o la roca s'escalfa massa.</li>
+      <li><span class="sunleg"><span><i class="s"></i></span></span> <b>Sol agradable:</b> el sol hi toca i s'hi està bé (sovint a l'hivern o a primera hora).</li>
+      <li><span class="sunleg"><span><i class="o"></i></span></span> <b>Ombra agradable</b> (o el sol tapat pels núvols).</li>
+      <li><span class="sunleg"><span><i class="c"></i></span></span> <b>Ombra freda:</b> sensació per sota de ${crit.comfLo} °C sense sol.</li></ul>
+      <p>El sol a la paret es calcula amb cap on mira i l'horitzó real del relleu de 5 m de l'ICGC (muntanyes del davant que el tapen). La nota de la zona és la del millor sector.</p>
+      <p><b>Orientació:</b> la d'OpenStreetMap (etiqueta climbing:orientation) si hi és; si no, <b>estimada amb el relleu</b> (cap on baixa el terreny al voltant del punt). El relleu suavitza les parets verticals i el punt d'OSM pot estar una mica desplaçat: si no és bona, corregeix-la a «Corregeix l'orientació» (només en aquest mòbil) o, millor, posa l'etiqueta a OpenStreetMap.</p>`],
     prova: ["Dades de prova", `
       <p>Aquesta zona és del catàleg provisional: coordenades i altitud aproximades (centre de la zona) i encara sense parets revisades.</p>
       <p>El veredicte és per a tota la zona. Traça una paret per tenir-ne el sol i l'ombra reals.</p>`]

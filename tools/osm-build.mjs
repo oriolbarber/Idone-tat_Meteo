@@ -1,8 +1,9 @@
 // Construeix zones-osm.js a partir de la resposta de l'Overpass (tools/osm-query.txt).
-// Ús: node tools/osm-build.mjs osm-raw.json [--no-elev]
+// Ús: node tools/osm-build.mjs osm-raw.json [--no-elev] [--no-dem] [--recompute]
 // Sectors = llocs d'escalada d'OSM (cingles, blocs, climbing=crag). Zones = sectors agrupats per proximitat,
 // amb el nom de l'àrea d'OSM (climbing=area) o del poble més proper. Dades © col·laboradors d'OpenStreetMap, ODbL.
 import fs from "node:fs";
+import {aspect, horizon, parseOri, stats} from "./dem.mjs";
 
 const [, , rawPath = "osm-raw.json", ...flags] = process.argv;
 const E = JSON.parse(fs.readFileSync(rawPath, "utf8")).elements;
@@ -25,7 +26,7 @@ for(const e of E){
     (e.members || []).forEach(m => memberOf.set(m.type[0] + m.ref, nameOf(t))); continue; }
   if(skip(t)) continue;
   sites.push({osm: e.type[0] + e.id, name: nameOf(t), kind: t.climbing === "boulder" || t["climbing:boulder"] === "yes" ? "bloc" : "sector",
-    rock: t["climbing:rock"], sport: t["climbing:sport"], trad: t["climbing:trad"], ...p});
+    rock: t["climbing:rock"], sport: t["climbing:sport"], trad: t["climbing:trad"], ori: t["climbing:orientation"], ...p});
 }
 // Relacions de sector (climbing=crag) que contenen altres llocs: es queda la relació
 // Duplicats: mateix nom a menys de 150 m
@@ -63,7 +64,7 @@ let zones = groups.map(g => {
   if(g.some(s => s.trad && s.trad !== "no")) mods.push("classica");
   return {id: "osm-" + slug(name) + (n > 1 ? "-" + n : ""), name: n > 1 ? name + " " + n : name,
     lat: +lat.toFixed(5), lon: +lon.toFixed(5), alt: null, rock: rocks[0] || null, mods: mods.length ? mods : ["esportiva"], src: "osm",
-    sectors: g.map(s => ({id: s.osm, name: s.name || "", kind: s.kind, lat: +s.lat.toFixed(5), lon: +s.lon.toFixed(5)}))
+    sectors: g.map(s => ({id: s.osm, name: s.name || "", kind: s.kind, lat: +s.lat.toFixed(5), lon: +s.lon.toFixed(5), ori: s.ori}))
       .sort((a, b) => (a.name ? 0 : 1) - (b.name ? 0 : 1) || a.name.localeCompare(b.name, "ca"))};
 });
 // Altitud del centre de cada zona (Open-Meteo, model de 90 m), de 100 en 100
@@ -75,6 +76,31 @@ if(!flags.includes("--no-elev")){
     (await r.json()).elevation.forEach((h, k) => b[k].alt = Math.round(h));
   }
 }
+// Orientació i horitzó de cada sector (vegeu dem.mjs). f = cares [{az, hz}], o = "osm" (etiqueta) | "dem" (calculada).
+// Es reaprofita el càlcul de la setmana anterior si el sector no s'ha mogut ni ha canviat l'etiqueta
+// (menys feina per a l'ICGC), i també si aquesta vegada el relleu no arriba.
+const nOri = {osm: 0, dem: 0, flat: 0};
+if(!flags.includes("--no-dem")){
+  const old = new Map();
+  try{ const t = fs.readFileSync("zones-osm.js", "utf8"); JSON.parse(t.slice(t.indexOf("["), t.lastIndexOf("]") + 1))
+    .forEach(z => z.sectors.forEach(s => old.set(s.id, s))); }catch(e){}
+  for(const z of zones) for(const s of z.sectors){
+    const ori = s.ori; delete s.ori;
+    const prev = old.get(s.id), same = prev && prev.lat === s.lat && prev.lon === s.lon && (prev.tag || "") === (ori || "");
+    if(same && !flags.includes("--recompute") && (prev.f || prev.flat)){ if(prev.f){ s.f = prev.f; s.o = prev.o; } else s.flat = 1; }
+    else{
+      const p = [s.lon, s.lat], az = parseOri(ori);
+      if(az.length){ s.o = "osm"; s.f = []; for(const a of az) s.f.push({az: a, hz: await horizon(p, a)}); }
+      else{ const a = await aspect(p);
+        if(a){ s.o = "dem"; s.f = [{az: a.az, hz: await horizon(p, a.az)}]; }
+        else if(prev && prev.f && stats.fails) { s.f = prev.f; s.o = prev.o; }   // l'ICGC no ha respost: es queda l'anterior
+        else if(stats.fails === 0) s.flat = 1; }                               // pla de debò: no cal tornar-ho a mirar
+      if(s.f) s.f.forEach(f => { if(!f.hz) delete f.hz; });
+    }
+    if(ori) s.tag = ori;
+    nOri[s.o || "flat"]++;
+  }
+} else zones.forEach(z => z.sectors.forEach(s => delete s.ori));
 zones.sort((a, b) => a.name.localeCompare(b.name, "ca"));
 const nS = zones.reduce((a, z) => a + z.sectors.length, 0);
 const js = `/* ============ CEM · zones i sectors d'OpenStreetMap (fitxer generat: no l'editis a mà) ============ */
@@ -83,4 +109,5 @@ const js = `/* ============ CEM · zones i sectors d'OpenStreetMap (fitxer gener
 const OSM_ZONES = ${JSON.stringify(zones).replace(/\},\{"id":"osm-/g, '},\n{"id":"osm-')};
 `;
 fs.writeFileSync("zones-osm.js", js);
-console.log(zones.length + " zones, " + nS + " sectors");
+console.log(zones.length + " zones, " + nS + " sectors" + (flags.includes("--no-dem") ? "" :
+  `; orientació: ${nOri.osm} d'OSM, ${nOri.dem} calculades, ${nOri.flat} sense (${stats.tiles} rajoles de relleu${stats.fails ? ", " + stats.fails + " fallades" : ""})`));
