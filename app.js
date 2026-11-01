@@ -441,7 +441,9 @@ const radarNow = () => !!ly.radar && dayKey === localOf(Date.now()).key;
 // Radar de pluja (RainViewer): últim fotograma disponible; només fins a zoom 7 natiu
 // Amb la capa de colors activa, el radar es pinta en gris fosc (com una ombra de núvol): els seus blaus i grocs
 // es barrejaven amb el verd/vermell de la capa i, amb daltonisme, el blau del radar era el mateix que «recomanat».
-let radarAt = null;
+let radarAt = null, radarBusy = false;
+const RADAR_FRESH = 10 * 60e3, RADAR_MAX = 40 * 60e3;
+function radarDrop(){ if(map.getLayer("radar")) map.removeLayer("radar"); if(map.getSource("radar")) map.removeSource("radar"); }
 function radarStyle(){
   if(!map.getLayer("radar")) return;
   const g = !!ly.heat, P = {"raster-saturation": g ? -1 : 0, "raster-brightness-max": g ? 0.35 : 1, "raster-contrast": g ? 0.3 : 0, "raster-opacity": g ? 0.6 : 0.7};
@@ -452,16 +454,30 @@ function radarStyle(){
 }
 async function radar(on){
   const note = $("radarNote");
-  if(!on){ if(map.getLayer("radar")) map.removeLayer("radar"); if(map.getSource("radar")) map.removeSource("radar"); note.hidden = true; return; }
-  if(map.getLayer("radar")) return radarStyle();
+  if(!on){ radarDrop(); note.hidden = true; return; }
+  // Fotograma de menys de 10 min: es reaprofita. Si és més vell (l'app ha estat en segon pla), es torna a demanar:
+  // abans es quedava el primer fotograma per sempre i de matinada es veia la pluja de les 20:50.
+  if(map.getLayer("radar") && radarAt && Date.now() - radarAt < RADAR_FRESH) return radarStyle();
+  if(radarBusy) return; radarBusy = true;
   try{
-    const j = await (await fetch("https://api.rainviewer.com/public/weather-maps.json")).json();
+    const j = await (await fetch("https://api.rainviewer.com/public/weather-maps.json", {cache:"no-store"})).json();
     const f = j.radar.past[j.radar.past.length - 1];
+    if(!radarNow()) return;
+    if(f.time * 1000 === radarAt && map.getLayer("radar")) return radarStyle();
+    radarDrop();
+    if(Date.now() - f.time * 1000 > RADAR_MAX){
+      // RainViewer no té cap fotograma recent: millor no pintar res que una pluja vella com si fos d'ara
+      radarAt = null; note.textContent = "Radar no disponible ara mateix (l'últim té més de 40 min)."; note.hidden = false; return;
+    }
     map.addSource("radar", {type:"raster", tiles:[j.host + f.path + "/256/{z}/{x}/{y}/2/1_1.png"], tileSize:256, maxzoom:7, attribution:"Radar: RainViewer"});
     map.addLayer({id:"radar", type:"raster", source:"radar", paint:{"raster-opacity":0.7}}, map.getLayer("wall-line") ? "wall-line" : undefined);
     radarAt = f.time * 1000; radarStyle();
-  }catch(e){ note.textContent = "No s'ha pogut carregar el radar."; note.hidden = false; }
+  }catch(e){ radarDrop(); radarAt = null; note.textContent = "No s'ha pogut carregar el radar."; note.hidden = false; }
+  finally{ radarBusy = false; }
 }
+// Mentre la capa és a la vista, el radar es renova cada 5 min i també en tornar a l'app des de segon pla
+setInterval(() => { if(!document.hidden && radarNow()) radar(true); }, 5 * 60e3);
+document.addEventListener("visibilitychange", () => { if(!document.hidden && radarNow()) radar(true); });
 
 // Fletxa per a les parets (dibuixada en un canvas)
 function arrowImage(){
