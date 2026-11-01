@@ -32,11 +32,16 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Baixa una adreça d'Open-Meteo (amb reintents). Retorna sempre una llista (una resposta per lloc).
 export async function getOM(url){
   if(MOCK) return mock(url);
+  // També es torna a provar si falla la connexió (abans un «Connect Timeout» d'Open-Meteo aturava tot el procés
+  // i aquella tanda de dades no es publicava: 30-10 i 31-10-2026)
   for(let t = 1; ; t++){
-    const r = await fetch(url);
-    if(r.ok){ const j = await r.json(); return Array.isArray(j) ? j : [j]; }
-    if(t >= 4) throw new Error("Open-Meteo HTTP " + r.status + ": " + (await r.text()).slice(0, 200));
-    await sleep(r.status === 429 ? 65000 : 5000 * t);   // 429 = límit per minut: s'espera i es torna a provar
+    let r = null, err = null;
+    try{ r = await fetch(url, {signal: AbortSignal.timeout(60000)}); }catch(e){ err = e; }
+    if(r && r.ok){ const j = await r.json(); return Array.isArray(j) ? j : [j]; }
+    const why = r ? "HTTP " + r.status + ": " + (await r.text()).slice(0, 200) : "xarxa: " + (err.cause?.code || err.name || err.message);
+    if(t >= 6) throw new Error("Open-Meteo " + why);
+    console.log(`\nOpen-Meteo ${why} · reintent ${t}/5`);
+    await sleep(r && r.status === 429 ? 65000 : 10000 * t);   // 429 = límit per minut: s'espera i es torna a provar
   }
 }
 // Dades inventades (pluja al nord avui, vent al nord-est), les mateixes que fan servir les proves de l'app

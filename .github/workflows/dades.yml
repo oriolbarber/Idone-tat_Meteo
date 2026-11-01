@@ -5,7 +5,10 @@
 #   heat.json capa «Idoneïtat amb colors» ja calculada (tools/heat-build.mjs)
 name: Dades de previsió
 on:
-  schedule: [{cron: "23 */3 * * *"}]
+  # Cada hora, però només es calcula si les dades publicades tenen ≥ 2 h 30 min: GitHub endarrereix o se salta
+  # execucions programades (fins a 5–9 h entre dades, 30-10 i 31-10-2026) i així es recupera a l'hora següent sense
+  # gastar més crides a Open-Meteo que «cada 3 h».
+  schedule: [{cron: "23 * * * *"}]
   workflow_dispatch:
 permissions: {contents: write}
 concurrency: {group: dades, cancel-in-progress: false}
@@ -15,14 +18,34 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Cal tornar a calcular?
+        id: age
+        run: |
+          git fetch -q --depth 1 origin dades 2>/dev/null && last=$(git log -1 --format=%ct FETCH_HEAD) || last=0
+          age=$(( $(date +%s) - last ))
+          if [ "${{ github.event_name }}" = "schedule" ] && [ $age -lt 9000 ]; then echo "go=0" >> $GITHUB_OUTPUT; echo "::notice::Dades de fa $((age/60)) min: no cal"; else echo "go=1" >> $GITHUB_OUTPUT; fi
       - uses: actions/setup-node@v4
+        if: steps.age.outputs.go == '1'
         with: {node-version: 22}
       - name: Previsió de les zones (fc.json)
-        run: node tools/fc-build.mjs "$RUNNER_TEMP/fc.json" | tee "$RUNNER_TEMP/fc.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/fc.txt)"
+        if: steps.age.outputs.go == '1'
+        continue-on-error: true
+        shell: bash
+        run: set -o pipefail; node tools/fc-build.mjs "$RUNNER_TEMP/fc.json" | tee "$RUNNER_TEMP/fc.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/fc.txt)"
       - name: Capa d'idoneïtat (heat.json)
-        run: node tools/heat-build.mjs "$RUNNER_TEMP/heat.json" | tee "$RUNNER_TEMP/heat.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/heat.txt)"
+        if: steps.age.outputs.go == '1'
+        continue-on-error: true
+        shell: bash
+        run: set -o pipefail; node tools/heat-build.mjs "$RUNNER_TEMP/heat.json" | tee "$RUNNER_TEMP/heat.txt"; echo "::notice::$(tail -1 $RUNNER_TEMP/heat.txt)"
       - name: Publica a la branca «dades»
+        if: steps.age.outputs.go == '1'
         run: |
+          # Si un dels dos fitxers no s'ha pogut fer, es publica l'altre i es manté l'anterior (abans no es publicava res)
+          new=0
+          for f in fc.json heat.json; do
+            if [ -s "$RUNNER_TEMP/$f" ]; then new=1; else git show FETCH_HEAD:$f > "$RUNNER_TEMP/$f" 2>/dev/null && echo "::warning::$f no s'ha pogut fer: es manté l'anterior" || { echo "::error::$f no existeix"; exit 1; }; fi
+          done
+          [ $new = 1 ] || { echo "::error::Open-Meteo no ha respost: res de nou per publicar"; exit 1; }
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
           git checkout -q --orphan dades-tmp
           git rm -rqf .
