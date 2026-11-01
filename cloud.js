@@ -80,10 +80,12 @@ async function restList(col){
 async function fetchPublic(force){
   if(!force && Date.now() - store.get("cem_cloud_at", 0) < PUB_TTL) return;
   try{
-    const [ws, os] = await Promise.all([restList("parets"), restList("orientacions")]);
+    const [ws, os, om] = await Promise.all([restList("parets"), restList("orientacions"), restList("ombres").catch(() => null)]);
     cloudWalls = ws.map(d => wallFromDoc(d.id, d.f)).filter(Boolean); store.set("cem_cloud_walls", cloudWalls);
     const co = {}; os.forEach(d => { if(d.f.sector && d.f.az != null) co["s:" + d.f.sector + ":" + (d.f.cara || 0)] = d.f.az; });
     cloudOri = co; store.set("cem_cloud_ori", co);
+    // nivell d'ombra al peu de les parets, ajustat amb les valoracions de confort (clau: "paretId:tram" o "s:sector:cara")
+    if(om){ const cs = {}; om.forEach(d => { if(d.f.key && d.f.nivell != null) cs[d.f.key] = d.f.nivell; }); cloudShade = cs; store.set("cem_cloud_shade", cs); }
     // la correcció d'aquest mòbil que ja és la de tothom s'esborra: així, si la comunitat la torna a canviar, arriba
     let ch = false;
     Object.keys(azFix).forEach(k => { if(k.startsWith("s:") && co[k] === azFix[k]){ delete azFix[k]; delete oriProp[k]; ch = true; } });
@@ -225,6 +227,8 @@ async function deleteAccount(){
     const f = await fs();
     const qs = await f.getDocs(f.query(f.collection(db, "propostes"), f.where("userId", "==", user.uid)));
     for(const d of qs.docs) await f.deleteDoc(d.ref);
+    const qv = await f.getDocs(f.query(f.collection(db, "valoracions"), f.where("userId", "==", user.uid))).catch(() => ({docs: []}));
+    for(const d of qv.docs) await f.deleteDoc(d.ref);
     await f.deleteDoc(f.doc(db, "usuaris", user.uid)).catch(() => {});
     await A.deleteUser(user);
     userWalls.forEach(w => { delete w.prop; }); saveWalls();
@@ -293,7 +297,7 @@ async function sendProposal(){
   try{
     const f = await fs();
     // La proposta porta l'orientació final de cada tram (amb la correcció manual, si n'hi ha)
-    const segs = w.segs.map((s, i) => ({azAuto: s.azAuto, az: segAz(w, i), hz: s.hz}));
+    const segs = w.segs.map((s, i) => ({azAuto: s.azAuto, az: segAz(w, i), hz: s.hz, om: shadeOf(w.id + ":" + i, s.om).lv}));
     const ref = await T(f.addDoc(f.collection(db, "propostes"), {userId:user.uid, tipus:"paret", zone:w.zone, name:String(w.name).slice(0, 80),
       exp:w.exp === "arrecerat" ? "arrecerat" : "exposat", d:JSON.stringify({pts:w.pts, segs}), estat:"pendent", llicencia:LIC,
       licAt:f.serverTimestamp(), creat:f.serverTimestamp()}));
@@ -345,7 +349,8 @@ function renderRev(){
     const azs = (d.segs || []).map(s => s.az == null ? "?" : cardOf(s.az)).join(", ");
     const when = p.creat ? new Date(p.creat.seconds * 1000).toLocaleDateString("ca") : "";
     const det = p.tipus === "orientacio" ? `Orientació del sector · de ${cardOf(p.azAuto)} a <b>${cardOf(p.az)}</b> (${Math.round(p.az)}°)`
-      : `${(d.segs || []).length} tram${(d.segs || []).length > 1 ? "s" : ""} · mira al ${azs} · ${p.exp === "arrecerat" ? "arrecerada" : "exposada"}`;
+      : `${(d.segs || []).length} tram${(d.segs || []).length > 1 ? "s" : ""} · mira al ${azs} · ${p.exp === "arrecerat" ? "arrecerada" : "exposada"}` +
+        ((d.segs || []).some(s => s.om) ? ` · ombra al peu: ${(d.segs || []).map(s => SHADE[s.om || 0].t.toLowerCase()).join(", ")}` : "");
     return `<div class="rv"><div><b>${esc(p.name)}</b> · ${esc(z ? z.name : p.zone)}</div>` +
       `<div class="note">${det} · ${esc(authors[p.userId] || "")} · ${when}</div>` +
       (rejecting === p.id ? `<div class="acc"><label>Motiu (el veurà qui l'ha proposada)<textarea id="rvMotiu" maxlength="200"></textarea></label>` +
@@ -353,6 +358,7 @@ function renderRev(){
       : `<div class="row"><button class="btn" type="button" data-rv="show" data-id="${p.id}">Al mapa</button>` +
         `<button class="btn" type="button" data-rv="reject" data-id="${p.id}">Rebutja</button><button class="btn pri" type="button" data-rv="approve" data-id="${p.id}">Aprova</button></div>`) + `</div>`;
   }).join("") : `<p class="note">No hi ha cap proposta pendent.</p>`);
+  if(window.CEM_CONF) CEM_CONF.revRender(box);
 }
 async function approve(id){
   const p = pending.find(p => p.id === id); if(!p) return;
@@ -367,7 +373,7 @@ async function approve(id){
     }
     let d = {}; try{ d = JSON.parse(p.d); }catch(e){}
     // A la paret publicada, l'orientació revisada passa a ser la de fàbrica (azAuto) i no hi ha cap dada personal
-    const segs = (d.segs || []).map(s => ({azAuto: s.az ?? s.azAuto, hz: s.hz}));
+    const segs = (d.segs || []).map(s => ({azAuto: s.az ?? s.azAuto, hz: s.hz, om: s.om || 0}));
     b.set(f.doc(db, "parets", id), {zone:p.zone, name:p.name, exp:p.exp, d:JSON.stringify({pts:d.pts, segs}), llicencia:LIC, v:1, aprovat:f.serverTimestamp()});
     b.update(f.doc(db, "propostes", id), {estat:"aprovada", revisatPer:user.uid, revisatAt:f.serverTimestamp()});
     await T(b.commit());
@@ -411,8 +417,8 @@ function showOriOnMap(p){
 /* ---------- interfície ---------- */
 const PRIV_HTML = `
   <p><b>Responsable:</b> projecte CEM · Centre Excursionista del Masnou (contacte: ${OWNER_EMAIL}).</p>
-  <p><b>Què es desa:</b> el teu nom, el correu, la data d'aquesta acceptació i les propostes de parets que enviïs.</p>
-  <p><b>Qui ho veu:</b> el nom i el correu, només l'administració i les persones revisores, per poder revisar les propostes. Les parets aprovades es publiquen sense cap dada teva.</p>
+  <p><b>Què es desa:</b> el teu nom, el correu, la data d'aquesta acceptació, les propostes de parets que enviïs i, si ho tries en valorar-les, les valoracions de confort (paret, dia, franja i nota).</p>
+  <p><b>Qui ho veu:</b> el nom i el correu, només l'administració i les persones revisores, per poder revisar les propostes. Les parets aprovades es publiquen sense cap dada teva. De les valoracions només es publica el nivell d'ombra que en surt, sense noms.</p>
   <p><b>On:</b> Google Firebase (Authentication i Cloud Firestore), en servidors de la Unió Europea.</p>
   <p><b>Per a què:</b> només perquè el compte i les propostes funcionin. No es ven ni es cedeix, i el correu no s'envia a cap altre servei.</p>
   <p><b>Els teus drets:</b> pots corregir el nom i esborrar el compte des d'aquí, quan vulguis. Per a qualsevol altra consulta, escriu al contacte de dalt.</p>
@@ -444,7 +450,7 @@ function render(){
         `<div class="row"><button class="btn" type="button" data-acc="resend">Torna a enviar el correu</button><button class="btn pri" type="button" data-acc="check">Ja l'he confirmat</button></div>`) +
       `<label>Nom<input type="text" id="accDNom" value="${esc(prof.nom)}" maxlength="80"></label><button class="btn" type="button" data-acc="name">Desa el nom</button>` +
       `<button class="btn" type="button" data-acc="logout">Tanca la sessió</button>` +
-      `<details class="more"><summary>Esborra el compte</summary><p class="note">S'esborren el perfil, les propostes i l'accés. Les parets aprovades queden al catàleg sense el teu nom. Les parets d'aquest mòbil s'hi queden.</p><div id="accDel"></div></details>`;
+      `<details class="more"><summary>Esborra el compte</summary><p class="note">S'esborren el perfil, les propostes, les valoracions de confort compartides i l'accés. Les parets aprovades queden al catàleg sense el teu nom. Les parets d'aquest mòbil s'hi queden.</p><div id="accDel"></div></details>`;
   }
   box.innerHTML = h;
   const del = $("accDel"); if(del) slideConfirm(del, "Llisca per esborrar el compte", deleteAccount);
@@ -491,7 +497,9 @@ async function need(why){
   return {f, db, uid: user.uid, isRev, odbl: !!prof.odblAt,
     markOdbl: async () => { if(prof.odblAt) return; await f.updateDoc(f.doc(db, "usuaris", user.uid), {odblAt: f.serverTimestamp()}).catch(() => {}); prof.odblAt = true; }};
 }
-window.CEM_CLOUD = {propose, proposeOri, need, uid: () => user ? user.uid : null, isRev: () => isRev, errText,
+// Accés a Firestore sense obrir cap panell (valoracions de confort): null si no hi ha compte confirmat
+async function quiet(){ if(!user || !prof || !verified()) return null; const f = await fs(); return {f, db, uid: user.uid, isRev}; }
+window.CEM_CLOUD = {propose, proposeOri, need, quiet, uid: () => user ? user.uid : null, isRev: () => isRev, errText, T,
   refresh: () => { fetchPublic(true); if(user) refreshMine(); }};
 
 /* ---------- inici ---------- */

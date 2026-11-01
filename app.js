@@ -43,6 +43,11 @@ const CRIT_DEF = {
   comfLo:10, comfHi:24          // franja de sensació còmoda (°C)
 };
 let crit = Object.assign(structuredClone(CRIT_DEF), store.get("cem_crit", {}));
+// Perfil de confort: desplaça la franja còmoda (fredolic la vol més calenta). «pers» = tocada a mà o apresa de les valoracions.
+const PERFILS = {fred:{t:"Fredolic", off:3}, neutre:{t:"Ni fu ni fa", off:0}, calor:{t:"Calorós", off:-3}};
+let perfil = store.get("cem_perfil", crit.comfLo === CRIT_DEF.comfLo && crit.comfHi === CRIT_DEF.comfHi ? "neutre" : "pers");
+let shadeFix = store.get("cem_shade", {});                // nivell d'ombra al peu de la paret, en aquest mòbil: {"paretId:tram" | "s:sector:cara": 0–3}
+let cloudShade = store.get("cem_cloud_shade", {});        // nivell d'ombra aprovat per a tothom (col·lecció «ombres», cloud.js)
 let userWalls = store.get("cem_walls", []);               // parets traçades en aquest mòbil (w.prop = estat de la proposta)
 let cloudWalls = store.get("cem_cloud_walls", []);        // parets aprovades per a tothom (col·lecció «parets», les porta cloud.js)
 let azFix = store.get("cem_azfix", {});                   // correcció manual: {"paretId:tram": az} i {"s:sector:cara": az}
@@ -119,6 +124,13 @@ function wallTag(w){
     ((st.k === "mob" || st.k === "rej") && userWalls.includes(w) ? `<button class="btn sm" type="button" data-propose="${w.id}">Proposa-la</button>` : "");
 }
 function segAz(w, i){ const f = azFix[w.id + ":" + i]; return f != null ? f : w.segs[i].azAuto; }
+// Ombra al peu de la paret (arbres, desplom…): part del sol directe que arriba a la persona i a la roca.
+// Mana: aquest mòbil (shadeFix) > comunitat (cloudShade, de les valoracions revisades) > la de la paret proposada (seg.om) > exposada.
+const SHADE = [{f:1, t:"Exposada"}, {f:0.6, t:"Ombra parcial", d:"arbres dispersos"}, {f:0.3, t:"Ombra densa", d:"bosc"}, {f:0.1, t:"Desplom o cova"}];
+function shadeOf(key, def){
+  const v = shadeFix[key] ?? cloudShade[key] ?? def ?? 0;
+  return {lv: v, src: shadeFix[key] != null ? "mob" : cloudShade[key] != null ? "com" : def != null ? "par" : "auto"};
+}
 // horitzó (graus) cap a l'azimut a; sense dades = 0
 function hzAt(hz, a){ if(!hz || !hz.length) return 0; const i = Math.round(((a % 360) + 360) % 360 / 5) % hz.length; return hz[i] || 0; }
 
@@ -247,7 +259,8 @@ const isStorm = (o, i) => (o.WC[i] >= 95) || ((o.CAPE[i] || 0) >= 1000 && (o.PP[
 
 // Avalua totes les hores d'una zona per a una orientació (az, hz, exposició). Retorna una fila per hora.
 // o: previsió del lloc (per defecte la de la zona; la capa de colors hi passa la d'un punt de la graella)
-function evalSeries(z, az, hz, exp, o = DATA.zones[z.id]){
+// sf: part del sol directe que arriba al peu de la paret (SHADE[nivell].f; 1 = exposada)
+function evalSeries(z, az, hz, exp, o = DATA.zones[z.id], sf = 1){
   const R = ROCKS[z.rock], wf = exp === "arrecerat" ? 0.5 : exp === "exposat" ? 1 : 0.8;
   const C = crit[mod];
   let W = 0, lastWet = null;
@@ -255,6 +268,8 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id]){
     const T = o.T[i], RH = o.RH[i], Td = o.Td[i], P = o.P[i] || 0, PP = o.PP[i] ?? 0;
     const wms = (o.W[i] || 0) / 3.6 * wf, gust = (o.G[i] || 0) * (exp === "arrecerat" ? 0.7 : 1);
     const wr = wallRad(o, i, z, az, hz);
+    // ombra al peu de la paret: només redueix la part directa (la difusa arriba igual)
+    if(sf < 1){ const idf = (o.DIF[i] || 0) * 0.5 + (o.GHI[i] || 0) * 0.1; wr.I = idf + (wr.I - idf) * sf; }
     // secat de la roca: aigua retinguda (mm equivalents) que entra amb la pluja i surt amb sol, vent i aire sec
     W = Math.min(R.cap, W + P * 0.6);
     const evap = R.dry * (0.05 + 0.0008 * wr.I + 0.02 * wms) * Math.max(0.1, 1 - RH / 100) * 2;
@@ -263,8 +278,10 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id]){
     // persona al peu de la paret: al sol si el sol toca la paret
     // lit = el sol toca la paret (geometria i horitzó); sunny = a més, no està tapat pels núvols
     const lit = wr.lit;
-    const sunny = (lit == null ? wr.sp.alt > 0 : lit) && (o.DNI[i] || 0) > 120;
-    const Q = sunny ? 0.7 * (0.25 * (o.DNI[i] || 0) + 0.5 * (o.DIF[i] || 0)) + 0.09 * wr.I : 0.21 * (o.DIF[i] || 0);
+    // sunGeo = el sol hi tocaria sense l'ombra de la paret; sunny = es nota el sol (ombra parcial sí, densa no)
+    const sunGeo = (lit == null ? wr.sp.alt > 0 : lit) && (o.DNI[i] || 0) > 120, sunny = sunGeo && sf >= 0.5;
+    const Qsh = 0.21 * (o.DIF[i] || 0);
+    const Q = sunGeo ? Qsh + sf * (0.7 * (0.25 * (o.DNI[i] || 0) + 0.5 * (o.DIF[i] || 0)) + 0.09 * wr.I - Qsh) : Qsh;
     const feel = feelT(T, RH, wms, wr.lit == null ? Q * 0.6 : Q);
     const Trock = T + 0.022 * wr.I;
     // puntuació
@@ -288,7 +305,7 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id]){
     pen.sort((a, b) => b.p - a.p);
     let sc = clamp(10 - pen.reduce((s, x) => s + x.p, 0), 0, 10);
     if(block) sc = Math.min(sc, 2);
-    return {t, loc:o.loc[i], sc, block, pen, feel, T, RH, Td, P, PP, gust, wkmh:o.W[i] || 0, wd:o.WD[i], lit, sunny, W, lastWet, Trock, I:wr.I, sp:wr.sp};
+    return {t, loc:o.loc[i], sc, block, pen, feel, T, RH, Td, P, PP, gust, wkmh:o.W[i] || 0, wd:o.WD[i], lit, sunny, sunGeo, W, lastWet, Trock, I:wr.I, sp:wr.sp};
   });
 }
 const lvOf = (sc, block) => block ? "no" : sc >= 7 ? "ok" : sc >= 4 ? "mid" : "no";
@@ -325,12 +342,14 @@ function secFaces(z){
 // Avaluació completa d'una zona: zona sencera o la millor paret (parets traçades i sectors amb orientació)
 const cache = new Map();
 function zoneEval(z){
-  const k = [z.id, mod, role, clo, JSON.stringify(crit), JSON.stringify(azFix), JSON.stringify(typeof cloudOri === "undefined" ? {} : cloudOri), userWalls.length, DATA.at].join("|");
+  const k = [z.id, mod, role, clo, JSON.stringify(crit), JSON.stringify(azFix), JSON.stringify(typeof cloudOri === "undefined" ? {} : cloudOri),
+    JSON.stringify(shadeFix), JSON.stringify(cloudShade), userWalls.length, cloudWalls.length, DATA.at].join("|");
   if(cache.has(k)) return cache.get(k);
   const ws = wallsOf(z), o = DATA.zones[z.id];
-  const targets = ws.flatMap(w => w.segs.map((s, i) => ({w, i, az: segAz(w, i), hz: s.hz}))).filter(x => x.az != null).concat(secFaces(z));
+  const targets = ws.flatMap(w => w.segs.map((s, i) => ({w, i, az: segAz(w, i), hz: s.hz, key: w.id + ":" + i, sh: shadeOf(w.id + ":" + i, s.om)})))
+    .filter(x => x.az != null).concat(secFaces(z).map(x => ({...x, sh: shadeOf(x.key)})));
   const zoneRows = evalSeries(z, null, null, null);
-  const segs = targets.map(x => ({...x, rows: evalSeries(z, x.az, x.hz, x.w.exp)}));
+  const segs = targets.map(x => ({...x, rows: evalSeries(z, x.az, x.hz, x.w.exp, o, SHADE[x.sh.lv].f)}));
   const r = {z, o, zoneRows, segs};
   cache.set(k, r); return r;
 }
@@ -740,6 +759,24 @@ function azFixHTML(key, cur){
     `<button type="button" data-az="auto" aria-pressed="${cur == null}">Auto</button></div>`;
 }
 
+// Ombra al peu de la paret: 4 nivells (es desa en aquest mòbil; la comunitat l'ajusta amb les valoracions)
+const SH_SRC = {mob:"triada en aquest mòbil", com:"ajustada per la comunitat", par:"de la paret proposada", auto:"per defecte"};
+function shadeHTML(key, sh){
+  return `<details class="more"><summary>Ombra al peu: ${SHADE[sh.lv].t.toLowerCase()}</summary>` +
+    `<div class="seg shfix" role="group" aria-label="Ombra al peu de la paret" data-key="${esc(key)}">` +
+    SHADE.map((s, k) => `<button type="button" data-sh="${k}" aria-pressed="${sh.lv === k}">${s.t}</button>`).join("") + `</div>` +
+    `<p class="note">${esc(SH_SRC[sh.src])}${shadeFix[key] != null ? ` · <button class="lnk" type="button" data-sh="auto" data-key="${esc(key)}">torna a la de tothom</button>` : ""}${INF("ombra")}</p></details>`;
+}
+// Roba que caldria per estar dins la franja còmoda (la sensació es calcula amb roba normal com a referència)
+function robaTxt(f){
+  const f0 = f - (clo - 1) * 7, lo = crit.comfLo, hi = crit.comfHi;
+  if(f0 > hi) return "samarreta, i busca l'ombra";
+  if(f0 >= lo + 3) return "samarreta i una capa prima";
+  if(f0 >= lo - 3) return "jaqueta prima o forro";
+  if(f0 >= lo - 8) return "roba d'abric";
+  return "plomes, gorra i guants";
+}
+
 // D'on surt l'orientació d'un sector, i l'estat de la proposta si se n'ha corregit en aquest mòbil
 const ORI_SRC = {mob:"corregida en aquest mòbil", com:"corregida per la comunitat", dem:"estimada amb el relleu", osm:"OpenStreetMap"};
 function oriPropHTML(x){
@@ -765,7 +802,7 @@ function sectorsHTML(z, ev, best){
         return `<div class="sface"><div class="wh"><span>Mira al <b>${cardOf(x.az)}</b> (${Math.round(x.az)}°)</span>` +
           `<small class="muted">${ORI_SRC[x.src] || "OpenStreetMap"}</small>${oriPropHTML(x)}` +
           (best && best.key === x.key ? `<span class="wtag lv-ok">Millor</span>` : "") + `</div>${sunBarHTML(p, dayKey)}` +
-          `<details class="more"><summary>Corregeix l'orientació</summary>${azFixHTML(x.key, azFix[x.key])}</details></div>`; }).join("");
+          `<details class="more"><summary>Corregeix l'orientació</summary>${azFixHTML(x.key, azFix[x.key])}</details>${shadeHTML(x.key, x.sh)}</div>`; }).join("");
       const ot = [...new Set(fs.map(x => cardOf(x.az)))].join("/");
       return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}${ot ? " – " + ot : ""}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
         `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (href ? `<a class="btn sm" href="${href}">Mapa</a>` : "") +
@@ -821,7 +858,8 @@ function renderSheet(){
       `<div class="seg xs" role="group" aria-label="Sensació per a" id="roleSeg"><button type="button" data-role="climb" aria-pressed="${role === "climb"}">Escalant</button>` +
       `<button type="button" data-role="belay" aria-pressed="${role === "belay"}">Assegurant</button></div>${INF("confort")}</div>` +
       `<div class="nconf"><span class="big tx-${lv}">${Math.round(f)}<small>°C</small></span>${pill(lv, feelTxt(f))}` +
-      `<span class="air">sensació · aire ${Math.round(ref.T)} °C${ref.sunny ? " al sol" : ref.lit ? ", núvol" : ref.lit === false ? " a l'ombra" : ""}</span></div>` +
+      `<span class="air">sensació · aire ${Math.round(ref.T)} °C${ref.sunny ? " al sol" : ref.sunGeo ? " a l'ombra dels arbres" : ref.lit ? ", núvol" : ref.lit === false ? " a l'ombra" : ""}</span></div>` +
+      `<p class="roba"><b>Roba:</b> ${esc(robaTxt(f))} <small class="muted">(${role === "climb" ? "escalant" : "assegurant"} · perfil ${esc(perfil === "pers" ? "personalitzat" : PERFILS[perfil].t.toLowerCase())})</small></p>` +
       `<div class="fgrid">` +
       `<div><span class="fl">Roca${INF("roca")}</span><b class="tx-${st === "seca" ? "ok" : st === "humida" ? "mid" : "no"}">${st[0].toUpperCase() + st.slice(1)}</b><small>${since}${rain72.toFixed(1).replace(".", ",")} mm en 72 h</small></div>` +
       `<div><span class="fl">Vent</span><b>${Math.round(ref.wkmh)} km/h ${cardOf(ref.wd)}</b><small>ratxa ${Math.round(ref.gust)} km/h</small></div>` +
@@ -829,6 +867,7 @@ function renderSheet(){
       (sun ? `<div><span class="fl">Llum</span><b>${tf(sun.rise)}–${tf(sun.set)}</b><small>${(Math.round((sun.set - sun.rise) / 3600e3 * 10) / 10).toString().replace(".", ",")} h de dia</small></div>` : "") +
       `</div></div>`;
   }
+  if(window.CEM_CONF) h += CEM_CONF.sheetHTML(z, ev);
   // coordenades: una sola fila, dada secundària
   const ll = `${z.lat.toFixed(5)}, ${z.lon.toFixed(5)}`, isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const mapHref = isIOS ? `https://maps.apple.com/?ll=${z.lat},${z.lon}&q=${encodeURIComponent(z.name)}` : /Android/.test(navigator.userAgent) ? `geo:${z.lat},${z.lon}?q=${z.lat},${z.lon}(${encodeURIComponent(z.name)})` : "";
@@ -847,7 +886,7 @@ function renderSheet(){
       h += `<div class="wall"><div class="wh"><b>${esc(w.name)}${w.segs.length > 1 ? " · tram " + (i + 1) : ""}</b>` +
         (az != null ? `${arrowSVG(az)}<span>Mira al <b>${cardOf(az)}</b> (${Math.round(az)}°)</span>` : `<span class="tx-mid">Orientació per fixar</span>`) + `</div>` +
         (i === 0 ? `<div class="wh">${wallTag(w)}</div>` : "");
-      if(sg) h += sunBarHTML(sunPlan(sg.rows, dayKey), dayKey);
+      if(sg) h += sunBarHTML(sunPlan(sg.rows, dayKey), dayKey) + shadeHTML(sg.key, sg.sh);
       h += `<details class="more"><summary>Corregeix l'orientació</summary><p class="note">El relleu de 5 m suavitza les parets verticals: si la fletxa no és bona, tria cap on mira la paret.</p>` +
         `<div class="azfix" data-wall="${w.id}" data-seg="${i}">${CARD.map((c, k) => `<button type="button" data-az="${k * 45}" aria-pressed="${azFix[w.id + ":" + i] === k * 45}">${c}</button>`).join("")}` +
         `<button type="button" data-az="auto" aria-pressed="${azFix[w.id + ":" + i] == null}">Auto</button></div>` +
@@ -877,6 +916,10 @@ $("zBody").addEventListener("click", e => {
   if(a){ const box = a.parentElement, k = box.dataset.wall + ":" + box.dataset.seg;
     if(a.dataset.az === "auto") delete azFix[k]; else azFix[k] = +a.dataset.az;
     store.set("cem_azfix", azFix); renderWalls(); renderAll(); return; }
+  const sh = e.target.closest("button[data-sh]");
+  if(sh){ const k = sh.dataset.key || sh.parentElement.dataset.key;
+    if(sh.dataset.sh === "auto") delete shadeFix[k]; else shadeFix[k] = +sh.dataset.sh;
+    store.set("cem_shade", shadeFix); renderAll(); return; }
   const x = e.target.closest("[data-exp] button[data-v]");
   if(x){ const w = userWalls.find(w => w.id === x.parentElement.dataset.exp);
     if(w){ w.exp = x.dataset.v; saveWalls(); renderAll(); } else msg("Aquesta paret és de tothom: per canviar-ne l'exposició, traça-la i proposa-la de nou.", true); return; }
@@ -990,10 +1033,17 @@ function infoContent(k){
       <p>Si la zona té parets traçades, la nota és la de la millor paret (amb el seu sol i ombra).</p>
       <p class="note">Els llindars es poden canviar a Menú ▸ Llindars.</p>`],
     confort: ["Sensació tèrmica", `
-      <p>Temperatura que notes al peu de la paret: aire, humitat, vent i sol (si toca la paret).</p>
+      <p>Temperatura que notes al peu de la paret (temperatura aparent de Steadman): aire, <b>humitat</b>, vent i sol (si toca la paret i no hi ha ombra al peu).</p>
+      <p><b>Humitat:</b> amb calor, l'aire humit no deixa suar i la sensació puja; amb fred, el vent i la humitat la baixen. A part, si l'aire és a prop del punt de rosada, la roca «sua» i rellisca: això resta a la nota encara que la sensació sigui bona.</p>
       <p><b>Escalant:</b> et mous i escalfes (uns 4 °C més). <b>Assegurant:</b> estàs quiet i és qui passa més fred.</p>
-      <p>Còmode entre ${crit.comfLo} i ${crit.comfHi} °C. La roba (Menú ▸ Llindars) també corregeix la sensació.</p>
+      <p>Còmode entre ${crit.comfLo} i ${crit.comfHi} °C. El <b>perfil</b> (fredolic, ni fu ni fa, calorós) mou aquesta franja i la roba (Menú ▸ Llindars) corregeix la sensació. La roba recomanada és la que et deixaria dins la franja.</p>
+      <p><b>Valora el confort</b> després d'escalar: amb unes quantes valoracions a llocs diferents, l'app et proposa ajustar la teva franja.</p>
       <p>És el valor de l'hora indicada (al mig de la franja triada).</p>`],
+    ombra: ["Ombra al peu de la paret", `
+      <p>Quant sol directe arriba a qui escala o assegura, a part del relleu: arbres, un desplom o una cova.</p>
+      <ul><li><b>Exposada:</b> tot el sol.</li><li><b>Ombra parcial</b> (arbres dispersos): una mica més de la meitat.</li><li><b>Ombra densa</b> (bosc): un terç.</li><li><b>Desplom o cova:</b> gairebé gens.</li></ul>
+      <p>Canvia la sensació i la temperatura de la roca. Si la tries aquí, val només per a aquest mòbil.</p>
+      <p>Per a tothom s'ajusta amb les <b>valoracions de confort</b> de diverses persones (corregides pel perfil de cadascú): quan n'hi ha prou, una persona revisora aprova el nivell nou.</p>`],
     roca: ["Roca seca, humida o molla", `
       <p>L'app suma la pluja que cau i la treu amb el sol a la paret, el vent i l'aire sec.</p>
       <ul><li><b>Molla:</b> no s'hi pot escalar (nota vermella).</li><li><b>Humida:</b> s'hi pot anar, però resta punts.</li><li><b>Seca:</b> sense aigua retinguda.</li></ul>
@@ -1150,10 +1200,12 @@ const CLO_TXT = {0.5:"lleugera", 1:"normal", 1.6:"d'abric"};
 function renderPanels(){
   const pr = (sel, attr, val) => document.querySelectorAll(sel).forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(val))));
   pr("#themeSeg button", "theme", theme); pr("#sizeSeg button", "size", size); pr("#cbSeg button", "cb", cb);
-  pr("#roleSeg2 button", "role", role); pr("#cloSeg button", "clo", clo); pr("#modSeg button", "mod", mod);
+  pr("#roleSeg2 button", "role", role); pr("#cloSeg button", "clo", clo); pr("#modSeg button", "mod", mod); pr("#perfSeg button", "perf", perfil);
+  $("perfNote").textContent = perfil === "pers" ? "Personalitzat: franja tocada a mà o ajustada amb les teves valoracions." : "";
+  if(window.CEM_CONF) CEM_CONF.panel();
   $("sub").textContent = mod === "classica" ? "Clàssica" : "Esportiva";
   $("peekAsp").textContent = {auto:"Tema automàtic", dark:"Tema fosc", light:"Tema clar"}[theme] + " · lletra " + (size === "big" ? "gran" : "petita") + (cb === "1" ? " · alt contrast" : "");
-  $("peekLl").textContent = (role === "climb" ? "Escalant" : "Assegurant") + " · roba " + CLO_TXT[clo];
+  $("peekLl").textContent = (perfil === "pers" ? "Personalitzat" : PERFILS[perfil].t) + " · " + (role === "climb" ? "escalant" : "assegurant") + " · roba " + CLO_TXT[clo];
   $("peekPar").textContent = userWalls.length ? userWalls.length + " traçades en aquest mòbil" : "Cap paret traçada";
   // llindars
   const C = crit[mod], mname = mod === "classica" ? "clàssica" : "esportiva";
@@ -1175,15 +1227,23 @@ document.addEventListener("click", e => {
   const c = e.target.closest("button[data-cb]"); if(c){ cb = c.dataset.cb; store.set("cem_cb", cb); applyLook(); renderPanels(); }
   const r = e.target.closest("#roleSeg2 button[data-role]"); if(r) setRole(r.dataset.role);
   const k = e.target.closest("#cloSeg button[data-clo]"); if(k){ clo = +k.dataset.clo; store.set("cem_clo", clo); renderPanels(); renderAll(); }
+  const pf = e.target.closest("#perfSeg button[data-perf]"); if(pf) setPerfil(pf.dataset.perf);
   const d = e.target.closest("button[data-wdel]");
   if(d){ const id = d.dataset.wdel, box = $("del-" + id); box.hidden = false;
     slideConfirm(box, "Llisca per esborrar", () => { userWalls = userWalls.filter(w => w.id !== id); Object.keys(azFix).forEach(k => k.startsWith(id + ":") && delete azFix[k]); store.set("cem_azfix", azFix); saveWalls(); renderAll(); }); }
 });
 $("crit").addEventListener("input", e => { const i = e.target.closest("input[data-k]"); if(!i) return; const k = i.dataset.k, v = +i.value;
-  if(k === "comfLo" || k === "comfHi") crit[k] = v; else crit[mod][k] = v;
+  if(k === "comfLo" || k === "comfHi"){ crit[k] = v; if(perfil !== "pers"){ perfil = "pers"; store.set("cem_perfil", perfil); } } else crit[mod][k] = v;
   i.nextElementSibling.textContent = v + (k.startsWith("comf") ? " °C" : " km/h"); store.set("cem_crit", crit); });
-$("crit").addEventListener("change", () => renderAll());
-$("resetCrit").addEventListener("click", () => { crit = structuredClone(CRIT_DEF); store.set("cem_crit", crit); renderPanels(); renderAll(); });
+$("crit").addEventListener("change", () => { renderPanels(); renderAll(); });
+$("resetCrit").addEventListener("click", () => { crit = structuredClone(CRIT_DEF); store.set("cem_crit", crit); perfil = "neutre"; store.set("cem_perfil", perfil); renderPanels(); renderAll(); });
+// Perfil: posa la franja còmoda per defecte desplaçada (els llindars de vent no canvien)
+function setPerfil(p){
+  if(!PERFILS[p]) return;
+  perfil = p; store.set("cem_perfil", p);
+  crit.comfLo = CRIT_DEF.comfLo + PERFILS[p].off; crit.comfHi = CRIT_DEF.comfHi + PERFILS[p].off; store.set("cem_crit", crit);
+  renderPanels(); renderAll();
+}
 // còpia de seguretat de les parets
 $("wExport").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify({app:"cem-idoneitat", v:1, walls:userWalls, azFix}, null, 1)], {type:"application/json"});
@@ -1216,7 +1276,7 @@ function slideConfirm(el, label, onDone){
 // Tocar el mapa (fora dels menús) tanca les capes, el calendari, «On anar» i les fitxes d'informació
 function closeFloating(){
   $("layerPanel").hidden = true; $("layerBtn").setAttribute("aria-expanded", "false");
-  ["calSheet", "rankSheet", "infoSheet"].forEach(x => $(x) && ($(x).hidden = true));
+  ["calSheet", "rankSheet", "infoSheet", "voteSheet"].forEach(x => $(x) && ($(x).hidden = true));
 }
 map.on("click", e => {
   if(drawing) return;
@@ -1232,7 +1292,7 @@ $("scrim").addEventListener("click", () => document.querySelectorAll(".panel").f
 addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
   if(anyPanel()) document.querySelectorAll(".panel").forEach(x => x.hidden = true);
-  else if(["calSheet", "rankSheet", "infoSheet"].some(x => $(x) && !$(x).hidden) || !$("layerPanel").hidden) closeFloating();
+  else if(["calSheet", "rankSheet", "infoSheet", "voteSheet"].some(x => $(x) && !$(x).hidden) || !$("layerPanel").hidden) closeFloating();
   else if(!$("sheet").hidden) $("sheetClose").click();
 });
 $("lyFav").addEventListener("change", e => setOnlyFav(e.target.checked));

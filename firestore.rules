@@ -6,6 +6,8 @@ rules_version = '2';
 //   Les revisa (aprova o rebutja) l'administració, un revisor o un premium.
 // - parets/{id}: catàleg aprovat. Lectura pública (l'app la llegeix sense compte).
 // - orientacions/{sector_cara}: orientacions de sectors d'OSM aprovades. Lectura pública.
+// - valoracions/{id}: valoracions de confort compartides (paret o sector, dia, franja, vot). Les llegeix qui les ha fet i la revisió.
+// - ombres/{clau}: nivell d'ombra al peu de la paret aprovat a partir de les valoracions. Lectura pública.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signed(){ return request.auth != null; }
@@ -107,6 +109,31 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(["sector", "cara", "zone", "az", "llicencia", "v", "aprovat"])
         && request.resource.data.llicencia == "ODbL-1.0"
         && request.resource.data.az is number && request.resource.data.az >= 0 && request.resource.data.az < 360;
+      allow delete: if isAdmin();
+    }
+
+    // Valoracions de confort: les crea qui té el correu confirmat; només per ajustar l'ombra de les parets
+    match /valoracions/{id} {
+      allow read: if reviewer() || (signed() && resource.data.userId == request.auth.uid);
+      allow create: if verified() && hasProf()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(["userId", "zone", "key", "dia", "franja", "rol", "vot", "dif", "sol", "nivell", "creat"])
+        && str(request.resource.data.zone, 60) && str(request.resource.data.key, 80) && str(request.resource.data.dia, 10)
+        && request.resource.data.franja in ["am", "pm"] && request.resource.data.rol in ["climb", "belay"]
+        && request.resource.data.vot is int && request.resource.data.vot >= -3 && request.resource.data.vot <= 3
+        && request.resource.data.dif is number && request.resource.data.dif >= -6 && request.resource.data.dif <= 6
+        && request.resource.data.sol is number && request.resource.data.sol >= 0 && request.resource.data.sol <= 1
+        && request.resource.data.nivell is int && request.resource.data.nivell >= 0 && request.resource.data.nivell <= 3;
+      allow delete: if signed() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Nivell d'ombra revisat: {clau amb «_»}. Lectura pública; mana sobre el de la paret proposada.
+    match /ombres/{id} {
+      allow read: if true;
+      allow create, update: if reviewer()
+        && request.resource.data.keys().hasOnly(["key", "zone", "nivell", "n", "v", "aprovat"])
+        && str(request.resource.data.key, 80)
+        && request.resource.data.nivell is int && request.resource.data.nivell >= 0 && request.resource.data.nivell <= 3;
       allow delete: if isAdmin();
     }
 

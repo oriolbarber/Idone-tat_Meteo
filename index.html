@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=12">
+<link rel="stylesheet" href="app.css?v=13">
 </head>
 <body>
 
@@ -115,6 +115,11 @@
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="sh-body prose" id="infoBody"></div>
 </section>
+<section class="msheet" id="voteSheet" hidden aria-labelledby="voteTitle">
+  <div class="sh-h"><h2 id="voteTitle">Com hi has estat?</h2><button class="ib" type="button" data-shclose aria-label="Tanca">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="sh-body" id="voteBody"></div>
+</section>
 <div class="msg" id="msg" role="status">Carregant la previsió…</div>
 
 <!-- traçat de paret -->
@@ -178,6 +183,11 @@
   <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Llindars</h2><span></span></div>
   <div class="pbody">
+    <div class="prow"><span class="lbl">Perfil de confort</span>
+      <div class="seg" role="group" aria-label="Perfil de confort" id="perfSeg">
+        <button type="button" data-perf="fred">Fredolic</button><button type="button" data-perf="neutre">Ni fu ni fa</button><button type="button" data-perf="calor">Calorós</button></div>
+      <p class="note" id="perfNote"></p></div>
+    <div id="confSug"></div>
     <div class="prow"><span class="lbl">Confort per a</span>
       <div class="seg" role="group" aria-label="Confort per a" id="roleSeg2">
         <button type="button" data-role="climb">Escalant</button><button type="button" data-role="belay">Assegurant</button></div></div>
@@ -272,8 +282,9 @@
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
 <script src="zones-osm.js?v=1"></script>
-<script src="app.js?v=19"></script>
-<script src="cloud.js?v=3"></script>
+<script src="app.js?v=20"></script>
+<script src="cloud.js?v=4"></script>
+<script src="conf.js?v=1"></script>
 <script src="restr.js?v=1"></script>
 <script src="heat.js?v=4"></script>
 </body>

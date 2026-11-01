@@ -397,3 +397,23 @@ a.btn.pri{color:var(--on-accent)}
 .heat-thr b{color:var(--ink)}
 .heat-thr input{flex-basis:100%;accent-color:var(--accent);min-height:36px}
 .sface details.more summary{min-height:40px;font-weight:600;font-size:.9em;color:var(--muted)}
+/* confort: roba, valoració, proposta de perfil (01-11-2026) */
+.roba{margin:6px 0 0;font-size:.92em}
+.vote-cta{display:flex;flex-direction:column;gap:4px}
+.vote-cta .btn{width:100%}
+@media (min-width:760px){.sh-body > .vote-cta,.sh-body > .sug{grid-column:1}}
+#voteBody{display:flex;flex-direction:column;gap:12px}
+#voteBody p{margin:0}
+#voteBody .ck{display:flex;align-items:flex-start;gap:10px;font-weight:600}
+#voteBody .ck input{width:24px;height:24px;flex:none;accent-color:var(--accent);margin-top:2px}
+.sel{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 10px;font-size:1em;width:100%}
+.vscale{display:flex;flex-direction:column;gap:6px}
+.vscale button{display:flex;align-items:center;gap:12px;min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--surface-2);padding:0 12px;font-weight:700;cursor:pointer;text-align:left}
+.vscale button b{min-width:2.2em;text-align:center;font-variant-numeric:tabular-nums}
+.vscale button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
+.vscale button[aria-pressed="true"] b{color:inherit}
+.sug{border:2px solid var(--mid);background:var(--mid-t);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sug p{margin:0}
+.ba{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0}
+.ba span:first-child{color:var(--muted)}
+.shfix{margin:6px 0}
