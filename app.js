@@ -30,7 +30,7 @@ function localOf0(ms){
 }
 
 /* ---------- preferències ---------- */
-let mod   = store.get("cem_mod", "esportiva");             // modalitat
+const mod = "esportiva";                                   // modalitat única (selector esportiva|clàssica tret l'01-11-2026)
 let role  = store.get("cem_role", "climb");                // confort per a: climb (escalant) | belay (assegurant)
 let clo   = store.get("cem_clo", "auto");                  // roba: "auto" (la més lleugera que hi deixa còmode, per franja) · 0.5 lleugera · 1 normal · 1.6 d'abric
 let slot  = store.get("cem_slot", null);                   // franja: am | pm (null = automàtica)
@@ -323,7 +323,7 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id], sf = 1){
     if(Trock < 0) add(1.5, "Roca gelada");
     const sweat = Trock - Td < 2 || RH * R.hum > 88;
     if(sweat) add(2, "La roca sua"); else if(RH * R.hum > 75) add(0.8, "Humitat alta");
-    if(gust > C.gustMax){ if(mod === "classica") block = block || "Vent fort"; else add(4, "Vent fort"); }
+    if(gust > C.gustMax) add(4, "Vent fort");
     else if(gust > C.gustMid) add(1.5, "Vent");
     pen.sort((a, b) => b.p - a.p);
     let sc = clamp(10 - pen.reduce((s, x) => s + x.p, 0), 0, 10);
@@ -721,7 +721,6 @@ function renderDays(scroll = true){
 $("days").addEventListener("click", e => { const b = e.target.closest("button[data-day]"); if(!b) return; const k = b.dataset.day;
   if(selDays.length > 1 && selDays.includes(k)){ dayKey = k; renderAll(); } else setDays([k], k); });
 $("slotSeg").addEventListener("click", e => { const b = e.target.closest("button[data-slot]"); if(!b) return; slot = b.dataset.slot; store.set("cem_slot", slot); renderAll(); });
-$("modSeg").addEventListener("click", e => { const b = e.target.closest("button[data-mod]"); if(!b) return; mod = b.dataset.mod; store.set("cem_mod", mod); renderPanels(); renderAll(); });
 
 /* ---------- FITXA DE LA ZONA ---------- */
 function openZone(id){
@@ -735,8 +734,6 @@ function closeZone(){ selZone = null; selSector = null; $("sheet").hidden = true
 $("sheetClose").addEventListener("click", () => { if(history.state && history.state.cemSheet) history.back(); else closeZone(); });
 addEventListener("popstate", () => { if(!$("sheet").hidden) closeZone(); });
 const INF = k => `<button class="inf" type="button" data-info="${k}" aria-label="Més informació"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg></button>`;
-const MOD_IC = {esportiva: document.querySelector('#modSeg [data-mod="esportiva"] svg').outerHTML.replace(/width="22" height="22"/, 'width="16" height="16"'),
-  classica: document.querySelector('#modSeg [data-mod="classica"] svg').outerHTML.replace(/width="22" height="22"/, 'width="16" height="16"')};
 const pill = (lv, txt) => `<span class="pill lv-${lv}">${LV_IC[lv].replace("<svg", '<svg width="13" height="13"')}${esc(txt)}</span>`;
 function feelLv(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 || f > hi + 6 ? "no" : f < lo || f > hi ? "mid" : "ok"; }
 function feelTxt(f){ const lo = crit.comfLo, hi = crit.comfHi; return f < lo - 6 ? "Molt fred" : f < lo ? "Fresc" : f > hi + 6 ? "Molta calor" : f > hi ? "Calor" : "Agradable"; }
@@ -844,9 +841,8 @@ function renderSheet(){
   const z = ZONES.find(z => z.id === selZone), ev = zoneEval(z), o = ev.o;
   const ws = wallsOf(z);
   $("zName").textContent = z.name; renderFavUI();
-  // subtítol en una línia: roca · altitud · icones de modalitat; «dades de prova» com a etiqueta
+  // subtítol en una línia: roca · altitud; «dades de prova» com a etiqueta
   $("zMeta").innerHTML = `<span>${ROCKS[z.rock].name}${z.rockGuess ? "?" : ""} · ${z.alt} m</span>` +
-    `<span title="${z.mods.map(m => m === "classica" ? "Clàssica" : "Esportiva").join(" i ")}">${z.mods.map(m => MOD_IC[m]).join(" ")}</span>` +
     (z.src === "provisional" ? `<span class="tag">Dades de prova${INF("prova")}</span>` : "") +
     (z.src === "osm" ? `<span class="tag">OpenStreetMap${INF("osm")}</span>` : "");
   // dies dins la fitxa: notes d'aquesta zona (matí | tarda); substitueix la barra de dies, que queda tapada
@@ -872,7 +868,6 @@ function renderSheet(){
   }
   h += `<div class="verd"><div class="secth"><span class="lbl">${esc(dayLbl(dayKey, true))}</span>${INF("nota")}</div>${vb("am")}${vb("pm")}</div>`;
   if(isFar(dayKey)) h += `<p class="note">Previsió orientativa (6è dia o més): torna-la a mirar més a prop de la sortida.</p>`;
-  if(z.mods.indexOf(mod) < 0) h += `<p class="note">Aquesta zona no té ${mod === "classica" ? "vies clàssiques" : "escalada esportiva"} al catàleg.</p>`;
   // dades a una hora concreta (la mateixa per a la sensació i per a les dades, perquè lliguin)
   const allRows = (cur.seg ? cur.seg.rows : ev.zoneRows);
   const nowI = allRows.findIndex(r => r.t >= Date.now()); const ref = mid || allRows[Math.max(0, nowI)];
@@ -1006,17 +1001,17 @@ let rankScope = store.get("cem_rank_scope", "all");
 function renderRank(){
   if(!DATA) return;
   const zs = rankScope === "vis" ? visibleZones() : rankScope === "fav" ? shown().filter(isFav) : shown();
-  // primer les zones amb la modalitat; les tancades o amb restricció confirmada de tota la zona, al final
-  const list = zs.map(z => ({z, P: periodEval(z), has: z.mods.includes(mod), F: window.CEM_R ? CEM_R.flags(z) : {}}))
-    .sort((a, b) => (b.has - a.has) || (!!a.F.full - !!b.F.full) || (b.P.good - a.P.good) || ((b.P.avg ?? -1) - (a.P.avg ?? -1)));
+  // les tancades o amb restricció confirmada de tota la zona, al final
+  const list = zs.map(z => ({z, P: periodEval(z), F: window.CEM_R ? CEM_R.flags(z) : {}}))
+    .sort((a, b) => (!!a.F.full - !!b.F.full) || (b.P.good - a.P.good) || ((b.P.avg ?? -1) - (a.P.avg ?? -1)));
   $("rankBody").innerHTML =
-    `<div class="row rk-top"><span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()} · ${mod === "classica" ? "clàssica" : "esportiva"}</span>` +
+    `<div class="row rk-top"><span class="muted">${esc(selTxt())} · ${FR_TXT[slot].toLowerCase()}</span>` +
     `<div class="seg" role="group" aria-label="Quines zones" id="rankSeg"><button type="button" data-rs="all" aria-pressed="${rankScope === "all"}">Totes</button>` +
     `<button type="button" data-rs="vis" aria-pressed="${rankScope === "vis"}">A la vista</button>` +
     `<button type="button" data-rs="fav" aria-pressed="${rankScope === "fav"}" aria-label="Preferides">★</button></div></div>` +
     (list.length ? list.map((x, i) => { const P = x.P, z = x.z;
-      return `<button type="button" class="rk${x.has ? "" : " off"}" data-zone="${z.id}"><span class="rn num">${i + 1}</span>` +
-        `<span class="rm"><b>${isFav(z) ? '<span class="star" aria-label="Preferida">★</span> ' : ""}${esc(z.name)}</b><small>${ROCKS[z.rock].name} · ${z.alt} m${x.has ? "" : " · sense " + (mod === "classica" ? "clàssica" : "esportiva")}</small>` +
+      return `<button type="button" class="rk" data-zone="${z.id}"><span class="rn num">${i + 1}</span>` +
+        `<span class="rm"><b>${isFav(z) ? '<span class="star" aria-label="Preferida">★</span> ' : ""}${esc(z.name)}</b><small>${ROCKS[z.rock].name} · ${z.alt} m</small>` +
         (x.F.ic ? `<span class="rflag${x.F.full ? " full" : x.F.pend ? " pend" : ""}">${x.F.ic} ${esc(x.F.txt)}</span>` : "") + `` +
         `<span class="rd">${P.per.map(d => `<i class="lv-${d.v.lv}" title="${dayLbl(d.k, true)}: ${esc(d.v.why)}">${dayLbl(d.k)} ${d.v.sc == null ? "–" : Math.round(d.v.sc)}</i>`).join("")}</span>` +
         (P.n === 1 ? `<small>${esc(P.per[0].v.why)}</small>` : "") + `</span>` +
@@ -1057,7 +1052,7 @@ function infoContent(k){
       <p>Una nota de 0 a 10 per a cada franja: <b>matí</b> (8–13 h) i <b>tarda</b> (14–19 h), només amb llum. És la mitjana de les hores de la franja.</p>
       <p>Cada hora parteix de 10 i resta per:</p>
       <ul><li>Risc de pluja o de tempesta.</li><li>Fred o calor: sensació fora de ${crit.comfLo}–${crit.comfHi} °C.</li><li>Roca massa calenta, gelada o humida (la roca «sua» quan l'aire és a prop del punt de rosada).</li>
-      <li>Ratxes: es nota a partir de ${C.gustMid} km/h; més de ${C.gustMax} km/h ${mod === "classica" ? "bloqueja la clàssica" : "resta molt en esportiva"}.</li></ul>
+      <li>Ratxes: es nota a partir de ${C.gustMid} km/h; més de ${C.gustMax} km/h resta molt.</li></ul>
       <p><b>Sempre vermell:</b> pluja, tempesta o roca molla a la franja. El motiu i l'hora surten sota la nota.</p>
       <p>Si la zona té parets traçades, la nota és la de la millor paret (amb el seu sol i ombra).</p>
       <p class="note">Els llindars es poden canviar a Menú ▸ Llindars.</p>`],
@@ -1230,20 +1225,19 @@ const CLO_TXT = {0.5:"lleugera", 1:"normal", 1.6:"d'abric", auto:"automàtica"};
 function renderPanels(){
   const pr = (sel, attr, val) => document.querySelectorAll(sel).forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(val))));
   pr("#themeSeg button", "theme", theme); pr("#sizeSeg button", "size", size); pr("#cbSeg button", "cb", cb);
-  pr("#roleSeg2 button", "role", role); pr("#cloSeg button", "clo", clo); pr("#modSeg button", "mod", mod); pr("#perfSeg button", "perf", perfil);
+  pr("#roleSeg2 button", "role", role); pr("#cloSeg button", "clo", clo); pr("#perfSeg button", "perf", perfil);
   $("perfNote").textContent = perfil === "pers" ? "Personalitzat: franja tocada a mà o ajustada amb les teves valoracions." : "";
   if(window.CEM_CONF) CEM_CONF.panel();
-  $("sub").textContent = mod === "classica" ? "Clàssica" : "Esportiva";
   $("peekAsp").textContent = {auto:"Tema automàtic", dark:"Tema fosc", light:"Tema clar"}[theme] + " · lletra " + (size === "big" ? "gran" : "petita") + (cb === "1" ? " · alt contrast" : "");
   $("peekLl").textContent = (perfil === "pers" ? "Personalitzat" : PERFILS[perfil].t) + " · " + (role === "climb" ? "escalant" : "assegurant") + " · roba " + CLO_TXT[clo];
   $("peekPar").textContent = userWalls.length ? userWalls.length + " traçades en aquest mòbil" : "Cap paret traçada";
   // llindars
-  const C = crit[mod], mname = mod === "classica" ? "clàssica" : "esportiva";
+  const C = crit[mod];
   $("crit").innerHTML =
     `<label>Sensació còmoda des de<span class="cv"><input type="range" min="0" max="20" step="1" value="${crit.comfLo}" data-k="comfLo"><b>${crit.comfLo} °C</b></span></label>` +
     `<label>Sensació còmoda fins a<span class="cv"><input type="range" min="15" max="35" step="1" value="${crit.comfHi}" data-k="comfHi"><b>${crit.comfHi} °C</b></span></label>` +
-    `<label>Ratxa a partir de la qual es nota (${mname})<span class="cv"><input type="range" min="15" max="80" step="5" value="${C.gustMid}" data-k="gustMid"><b>${C.gustMid} km/h</b></span></label>` +
-    `<label>Ratxa màxima (${mname})<span class="cv"><input type="range" min="20" max="100" step="5" value="${C.gustMax}" data-k="gustMax"><b>${C.gustMax} km/h</b></span></label>`;
+    `<label>Ratxa a partir de la qual es nota<span class="cv"><input type="range" min="15" max="80" step="5" value="${C.gustMid}" data-k="gustMid"><b>${C.gustMid} km/h</b></span></label>` +
+    `<label>Ratxa màxima<span class="cv"><input type="range" min="20" max="100" step="5" value="${C.gustMax}" data-k="gustMax"><b>${C.gustMax} km/h</b></span></label>`;
   // parets
   $("wList").innerHTML = userWalls.length ? userWalls.map(w => { const z = ZONES.find(z => z.id === w.zone);
     return `<div class="wli"><b>${esc(w.name)}</b><span class="muted">${esc(z ? z.name : "?")} · ${w.segs.length} tram${w.segs.length > 1 ? "s" : ""}</span>${wallTag(w)}` +

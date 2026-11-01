@@ -33,7 +33,7 @@ const url = b => "https://api.open-meteo.com/v1/forecast?latitude=" + b.map(p =>
   "&past_days=3&forecast_days=" + DAYS + "&wind_speed_unit=kmh";
 
 // ---------- càlcul ----------
-const COMBOS = [["esportiva", "climb"], ["esportiva", "belay"], ["classica", "climb"], ["classica", "belay"]];
+const COMBOS = [["esportiva", "climb"], ["esportiva", "belay"]];   // modalitat única (01-11-2026)
 const SL = ["am", "pm", "dia"], today = new Intl.DateTimeFormat("en-CA", {timeZone: M.TZ}).format(new Date());
 let days = null; const val = {}, rain = {};
 const RAIN_H = {am: [8, 13], pm: [14, 19], dia: [8, 19]};   // com a heat.js          // val["mod|role"][dia][franja] = Uint8Array(P.length): nota × 10, 255 = sense dades
