@@ -39,8 +39,9 @@ function predict(z, key, day, slot, r, c){
   const ev = zoneEval(z), sg = key === "zona" ? null : ev.segs.find(x => x.key === key);
   const rows = slotVerdict(sg ? sg.rows : ev.zoneRows, ev.o, day, slot).rows;
   if(!rows.length) return null;
-  const d = adj(r, c) - adj(role, clo);
-  return {F: rows.reduce((s, x) => s + x.feel, 0) / rows.length + d, sun: rows.filter(x => x.sunGeo).length / rows.length,
+  // sensació amb la persona i la roba de la valoració (f1 = amb el rol actual i roba normal; c null = la que considerava l'app)
+  const F = rows.reduce((s, x) => s + x.f1 - adj(role, 1) + adj(r, c ?? x.clo), 0) / rows.length;
+  return {F, sun: rows.filter(x => x.sunGeo).length / rows.length, appClo: rows[0].clo,
     lvl: sg ? sg.sh.lv : null, src: sg ? sg.sh.src : null};
 }
 // Es pot compartir: sectors d'OSM i parets aprovades (les d'aquest mòbil no les veu ningú més)
@@ -89,7 +90,7 @@ function sheetHTML(z){
 function open(zid){
   const z = ZONES.find(z => z.id === zid); if(!z || !DATA) return;
   const day = pastDays()[0], slot = localOf(Date.now()).h < 14 ? "am" : "pm", sv = zoneSlot(zoneEval(z), day, slot);
-  form = {zone: zid, day, slot, key: sv.seg ? sv.seg.key : "zona", role, clo, vote: null, share: true};
+  form = {zone: zid, day, slot, key: sv.seg ? sv.seg.key : "zona", role, clo: null, vote: null, share: true};
   ["calSheet", "rankSheet", "infoSheet"].forEach(x => $(x).hidden = true);
   $("voteSheet").hidden = false; render();
 }
@@ -106,7 +107,8 @@ function render(){
     faces.map(([k, t]) => `<option value="${esc(k)}"${k === form.key ? " selected" : ""}>${esc(t)}</option>`).join("") +
     `<option value="zona"${form.key === "zona" ? " selected" : ""}>No ho sé / tota la zona</option></select></div>` +
     seg("Hi estaves", "vr", [["climb", "Escalant"], ["belay", "Assegurant"]], form.role) +
-    seg("Roba", "vc", [[0.5, "Lleugera"], [1, "Normal"], [1.6, "D'abric"]], form.clo);
+    seg("Roba que duies", "vc", [[0.5, "Lleugera"], [1, "Normal"], [1.6, "D'abric"]], form.clo ?? (p ? p.appClo : 1)) +
+    (form.clo == null && p ? `<p class="note">Marcada: la que considerava l'app per a aquesta franja. Canvia-la si en duies una altra.</p>` : "");
   h += p ? `<p class="note">L'app preveia una sensació d'uns <b>${Math.round(p.F)} °C</b> (${feelTxt(p.F).toLowerCase()})${p.sun >= SH_SUN ? ", amb sol a la paret" : ""}.</p>`
     : `<p class="note">Aquesta franja no té hores de llum: tria'n una altra.</p>`;
   h += `<div class="prow"><span class="lbl">Com hi has estat?</span><div class="vscale" role="group" aria-label="Com hi has estat">` +
@@ -120,7 +122,7 @@ async function save(){
   const z = ZONES.find(z => z.id === form.zone), p = predict(z, form.key, form.day, form.slot, form.role, form.clo);
   if(!p || form.vote == null) return;
   const e = expVote(p.F, crit.comfLo, crit.comfHi);
-  const v = {id: "v" + Date.now().toString(36), at: Date.now(), zone: form.zone, key: form.key, day: form.day, slot: form.slot, role: form.role, clo: form.clo,
+  const v = {id: "v" + Date.now().toString(36), at: Date.now(), zone: form.zone, key: form.key, day: form.day, slot: form.slot, role: form.role, clo: form.clo ?? p.appClo,
     vote: form.vote, F: Math.round(p.F * 10) / 10, lo: crit.comfLo, hi: crit.comfHi, dif: r2(form.vote - e), sun: r2(p.sun), lvl: p.lvl, src: p.src};
   // la mateixa franja i lloc es pot tornar a valorar: queda l'última
   const same = x => x.zone === v.zone && x.key === v.key && x.day === v.day && x.slot === v.slot && x.role === v.role;

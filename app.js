@@ -32,7 +32,7 @@ function localOf0(ms){
 /* ---------- preferències ---------- */
 let mod   = store.get("cem_mod", "esportiva");             // modalitat
 let role  = store.get("cem_role", "climb");                // confort per a: climb (escalant) | belay (assegurant)
-let clo   = store.get("cem_clo", 1);                       // roba: 0.5 lleugera · 1 normal · 1.6 d'abric
+let clo   = store.get("cem_clo", "auto");                  // roba: "auto" (la més lleugera que hi deixa còmode, per franja) · 0.5 lleugera · 1 normal · 1.6 d'abric
 let slot  = store.get("cem_slot", null);                   // franja: am | pm (null = automàtica)
 let base  = store.get("cem_base", "topo");
 let ly    = Object.assign({slope:false, radar:false, wind:true, walls:true, heat:false}, store.get("cem_ly", {}));
@@ -248,12 +248,21 @@ function wallRad(o, i, z, az, hz){
   if(az == null){ const r = [0, 90, 180, 270].map(one); return {I: r.reduce((s, x) => s + x.I, 0) / 4, lit: null, sp}; }
   return Object.assign(one(az), {sp});
 }
-// Sensació tèrmica (°C): temperatura aparent de Steadman amb radiació, corregida per activitat i roba
-function feelT(T, RH, wms, Q){
+// Sensació tèrmica (°C): temperatura aparent de Steadman amb radiació, corregida per activitat i roba (c = clo)
+function feelT(T, RH, wms, Q, c = 1){
   const e = RH / 100 * 6.105 * Math.exp(17.27 * T / (237.7 + T));
   let at = T + 0.348 * e - 0.70 * wms + 0.70 * Q / (wms + 10) - 4.25;
   if(role === "climb") at += 4;
-  return at + (clo - 1) * 7;
+  return at + (c - 1) * 7;
+}
+// Roba automàtica: per a cada franja (matí 8–13 h, tarda 14–19 h) la més lleugera que deixa la sensació mitjana
+// de les hores de llum dins la franja còmoda. Escalant, com a molt roba normal (amb plomes no s'escala): així un
+// dia fred continua restant. Assegurant, també d'abric. Si cap no hi arriba, la més calenta permesa.
+const CLO_OPT = {climb:[0.5, 1], belay:[0.5, 1, 1.6]};
+const halfOf = h => h < 14 ? "am" : "pm";
+function autoClo(f1){                                       // f1 = sensació mitjana amb roba normal
+  const opts = CLO_OPT[role] || CLO_OPT.climb;
+  return opts.find(c => f1 + (c - 1) * 7 >= crit.comfLo) ?? opts[opts.length - 1];
 }
 const isStorm = (o, i) => (o.WC[i] >= 95) || ((o.CAPE[i] || 0) >= 1000 && (o.PP[i] || 0) >= 40);
 
@@ -264,7 +273,7 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id], sf = 1){
   const R = ROCKS[z.rock], wf = exp === "arrecerat" ? 0.5 : exp === "exposat" ? 1 : 0.8;
   const C = crit[mod];
   let W = 0, lastWet = null;
-  return o.t.map((t, i) => {
+  const rows = o.t.map((t, i) => {
     const T = o.T[i], RH = o.RH[i], Td = o.Td[i], P = o.P[i] || 0, PP = o.PP[i] ?? 0;
     const wms = (o.W[i] || 0) / 3.6 * wf, gust = (o.G[i] || 0) * (exp === "arrecerat" ? 0.7 : 1);
     const wr = wallRad(o, i, z, az, hz);
@@ -282,17 +291,31 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id], sf = 1){
     const sunGeo = (lit == null ? wr.sp.alt > 0 : lit) && (o.DNI[i] || 0) > 120, sunny = sunGeo && sf >= 0.5;
     const Qsh = 0.21 * (o.DIF[i] || 0);
     const Q = sunGeo ? Qsh + sf * (0.7 * (0.25 * (o.DNI[i] || 0) + 0.5 * (o.DIF[i] || 0)) + 0.09 * wr.I - Qsh) : Qsh;
-    const feel = feelT(T, RH, wms, wr.lit == null ? Q * 0.6 : Q);
+    const f1 = feelT(T, RH, wms, wr.lit == null ? Q * 0.6 : Q);   // amb roba normal; la roba es posa a la 2a passada
     const Trock = T + 0.022 * wr.I;
+    return {t, loc:o.loc[i], f1, T, RH, Td, P, PP, gust, wkmh:o.W[i] || 0, wd:o.WD[i], lit, sunny, sunGeo, W, lastWet, Trock, I:wr.I, sp:wr.sp, cape:o.CAPE[i] || 0, storm:isStorm(o, i)};
+  });
+  // roba de cada franja (dia|am/pm): automàtica o la fixa de Llindars
+  const cl = {};
+  if(clo === "auto"){
+    const acc = {};
+    rows.forEach(r => { const h = r.loc.h; if(h < SLOT_H.am[0] || h > SLOT_H.pm[1] || r.sp.alt <= 0) return;
+      const k = r.loc.key + "|" + halfOf(h); (acc[k] = acc[k] || []).push(r.f1); });
+    Object.entries(acc).forEach(([k, a]) => cl[k] = autoClo(a.reduce((s, x) => s + x, 0) / a.length));
+  }
+  return rows.map(r => {
+    const {T, Td, P, PP, gust, W, Trock, RH} = r;
+    const c = clo === "auto" ? cl[r.loc.key + "|" + halfOf(r.loc.h)] ?? 1 : clo;
+    const feel = r.f1 + (c - 1) * 7;
     // puntuació
     const pen = []; let block = null;
     const add = (p, why) => pen.push({p, why});
     if(P >= 0.3) block = "Pluja";
-    else if(isStorm(o, i)) block = "Tempesta";
+    else if(r.storm) block = "Tempesta";
     else if(W > 0.3) block = "Roca molla";
     if(W > 0.05 && W <= 0.3) add(2.5, "Roca humida");
     if(PP >= 60) add(4, "Probable pluja"); else if(PP >= 30) add(2, "Risc de pluja");
-    if((o.CAPE[i] || 0) >= 600 && PP >= 20) add(2, "Risc de tempesta");
+    if(r.cape >= 600 && PP >= 20) add(2, "Risc de tempesta");
     const lo = crit.comfLo, hi = crit.comfHi;
     if(feel < lo - 6) add(3.5, "Molt fred"); else if(feel < lo) add(1.5, "Fred");
     if(feel > hi + 6) add(3.5, "Molta calor"); else if(feel > hi) add(1.5, "Calor");
@@ -305,7 +328,7 @@ function evalSeries(z, az, hz, exp, o = DATA.zones[z.id], sf = 1){
     pen.sort((a, b) => b.p - a.p);
     let sc = clamp(10 - pen.reduce((s, x) => s + x.p, 0), 0, 10);
     if(block) sc = Math.min(sc, 2);
-    return {t, loc:o.loc[i], sc, block, pen, feel, T, RH, Td, P, PP, gust, wkmh:o.W[i] || 0, wd:o.WD[i], lit, sunny, sunGeo, W, lastWet, Trock, I:wr.I, sp:wr.sp};
+    return Object.assign(r, {sc, block, pen, feel, clo: c});
   });
 }
 const lvOf = (sc, block) => block ? "no" : sc >= 7 ? "ok" : sc >= 4 ? "mid" : "no";
@@ -767,14 +790,20 @@ function shadeHTML(key, sh){
     SHADE.map((s, k) => `<button type="button" data-sh="${k}" aria-pressed="${sh.lv === k}">${s.t}</button>`).join("") + `</div>` +
     `<p class="note">${esc(SH_SRC[sh.src])}${shadeFix[key] != null ? ` · <button class="lnk" type="button" data-sh="auto" data-key="${esc(key)}">torna a la de tothom</button>` : ""}${INF("ombra")}</p></details>`;
 }
-// Roba que caldria per estar dins la franja còmoda (la sensació es calcula amb roba normal com a referència)
-function robaTxt(f){
-  const f0 = f - (clo - 1) * 7, lo = crit.comfLo, hi = crit.comfHi;
-  if(f0 > hi) return "samarreta, i busca l'ombra";
-  if(f0 >= lo + 3) return "samarreta i una capa prima";
-  if(f0 >= lo - 3) return "jaqueta prima o forro";
-  if(f0 >= lo - 8) return "roba d'abric";
-  return "plomes, gorra i guants";
+// Roba considerada al dia enfocat (matí | tarda), automàtica o la fixa de Llindars, i avís si ni així s'hi està bé
+function robaHTML(rows, o){
+  const lo = crit.comfLo, hi = crit.comfHi, CT = {0.5:"lleugera", 1:"normal", 1.6:"d'abric"};
+  const fr = ["am", "pm"].map(s => { const rs = slotVerdict(rows, o, dayKey, s).rows; if(!rs.length) return null;
+    return {s, c: rs[0].clo, F: rs.reduce((a, r) => a + r.feel, 0) / rs.length}; }).filter(Boolean);
+  if(!fr.length) return "";
+  const SL = {am:"al matí", pm:"a la tarda"};
+  const what = fr.length === 2 && fr[0].c === fr[1].c ? CT[fr[0].c] + " tot el dia" : fr.map(x => CT[x.c] + " " + SL[x.s]).join(", ");
+  const cold = fr.filter(x => x.F < lo), hot = fr.filter(x => x.F > hi);
+  const warn = cold.length ? `Encara fred ${cold.map(x => SL[x.s]).join(" i ")}${role === "climb" ? " (escalant no es compta més que roba normal): abriga't entre vies" : ": gorra i guants"}`
+    : hot.length ? `Calor ${hot.map(x => SL[x.s]).join(" i ")} fins i tot amb roba ${clo === "auto" ? "lleugera" : CT[clo]}: busca l'ombra` : "";
+  return `<p class="roba"><b>${clo === "auto" ? "Roba considerada" : "Roba (fixa)"}:</b> ${esc(what)}` +
+    ` <small class="muted">(${role === "climb" ? "escalant" : "assegurant"} · perfil ${esc(perfil === "pers" ? "personalitzat" : PERFILS[perfil].t.toLowerCase())})</small>` +
+    (warn ? `<br><small class="tx-mid">${esc(warn)}</small>` : "") + `</p>`;
 }
 
 // D'on surt l'orientació d'un sector, i l'estat de la proposta si se n'ha corregit en aquest mòbil
@@ -859,7 +888,7 @@ function renderSheet(){
       `<button type="button" data-role="belay" aria-pressed="${role === "belay"}">Assegurant</button></div>${INF("confort")}</div>` +
       `<div class="nconf"><span class="big tx-${lv}">${Math.round(f)}<small>°C</small></span>${pill(lv, feelTxt(f))}` +
       `<span class="air">sensació · aire ${Math.round(ref.T)} °C${ref.sunny ? " al sol" : ref.sunGeo ? " a l'ombra dels arbres" : ref.lit ? ", núvol" : ref.lit === false ? " a l'ombra" : ""}</span></div>` +
-      `<p class="roba"><b>Roba:</b> ${esc(robaTxt(f))} <small class="muted">(${role === "climb" ? "escalant" : "assegurant"} · perfil ${esc(perfil === "pers" ? "personalitzat" : PERFILS[perfil].t.toLowerCase())})</small></p>` +
+      robaHTML(cur.seg ? cur.seg.rows : ev.zoneRows, o) +
       `<div class="fgrid">` +
       `<div><span class="fl">Roca${INF("roca")}</span><b class="tx-${st === "seca" ? "ok" : st === "humida" ? "mid" : "no"}">${st[0].toUpperCase() + st.slice(1)}</b><small>${since}${rain72.toFixed(1).replace(".", ",")} mm en 72 h</small></div>` +
       `<div><span class="fl">Vent</span><b>${Math.round(ref.wkmh)} km/h ${cardOf(ref.wd)}</b><small>ratxa ${Math.round(ref.gust)} km/h</small></div>` +
@@ -1022,7 +1051,7 @@ function infoContent(k){
       <p>Surt d'una graella de punts de previsió cada uns 10 km. A cada punt es calcula la nota com si fos una zona <b>sense parets</b>: pluja, tempesta, roca molla, fred o calor, humitat i vent, però <b>sense l'orientació</b> ni el sol o l'ombra d'una paret concreta (i amb roca calcària).</p>
       <p>Per això la capa i una rodona poden no coincidir: <b>mana la rodona</b>, que té en compte les parets.</p>
       <p>Només es pinta a prop de les zones d'escalada (fins a uns 20 km); lluny no s'hi fa cap estimació. Arriba fins a 8 dies.</p>
-      <p>Es calcula cada 3 hores per a totes les zones amb els <b>llindars per defecte</b> i roba normal: els teus llindars i la roba canvien les rodones, però no aquesta capa.</p>
+      <p>Es calcula cada 3 hores per a totes les zones amb els <b>llindars per defecte</b> i roba automàtica: els teus llindars i la roba canvien les rodones, però no aquesta capa.</p>
       <p>A Capes pots amagar les notes baixes perquè només quedin les zones bones.</p>`],
     nota: ["Com es calcula la nota", `
       <p>Una nota de 0 a 10 per a cada franja: <b>matí</b> (8–13 h) i <b>tarda</b> (14–19 h), només amb llum. És la mitjana de les hores de la franja.</p>
@@ -1036,7 +1065,8 @@ function infoContent(k){
       <p>Temperatura que notes al peu de la paret (temperatura aparent de Steadman): aire, <b>humitat</b>, vent i sol (si toca la paret i no hi ha ombra al peu).</p>
       <p><b>Humitat:</b> amb calor, l'aire humit no deixa suar i la sensació puja; amb fred, el vent i la humitat la baixen. A part, si l'aire és a prop del punt de rosada, la roca «sua» i rellisca: això resta a la nota encara que la sensació sigui bona.</p>
       <p><b>Escalant:</b> et mous i escalfes (uns 4 °C més). <b>Assegurant:</b> estàs quiet i és qui passa més fred.</p>
-      <p>Còmode entre ${crit.comfLo} i ${crit.comfHi} °C. El <b>perfil</b> (fredolic, ni fu ni fa, calorós) mou aquesta franja i la roba (Menú ▸ Llindars) corregeix la sensació. La roba recomanada és la que et deixaria dins la franja.</p>
+      <p>Còmode entre ${crit.comfLo} i ${crit.comfHi} °C. El <b>perfil</b> (fredolic, ni fu ni fa, calorós) mou aquesta franja.</p>
+      <p><b>Roba automàtica</b> (per defecte, Menú ▸ Llindars): per a cada franja l'app compta la roba més lleugera que et deixa dins la franja còmoda i ho diu a «Roba considerada». Escalant, com a molt roba normal (amb plomes no s'escala), de manera que un dia fred continua restant; assegurant, també d'abric. Si tries una roba fixa, es fa servir sempre aquella.</p>
       <p><b>Valora el confort</b> després d'escalar: amb unes quantes valoracions a llocs diferents, l'app et proposa ajustar la teva franja.</p>
       <p>És el valor de l'hora indicada (al mig de la franja triada).</p>`],
     ombra: ["Ombra al peu de la paret", `
@@ -1196,7 +1226,7 @@ function applyLook(){
   window.CEM_H && CEM_H.redraw();   // els colors de la capa segueixen el tema i el daltonisme
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyLook);
-const CLO_TXT = {0.5:"lleugera", 1:"normal", 1.6:"d'abric"};
+const CLO_TXT = {0.5:"lleugera", 1:"normal", 1.6:"d'abric", auto:"automàtica"};
 function renderPanels(){
   const pr = (sel, attr, val) => document.querySelectorAll(sel).forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(val))));
   pr("#themeSeg button", "theme", theme); pr("#sizeSeg button", "size", size); pr("#cbSeg button", "cb", cb);
@@ -1226,7 +1256,7 @@ document.addEventListener("click", e => {
   const s = e.target.closest("button[data-size]"); if(s){ size = s.dataset.size; store.set("cem_size", size); applyLook(); renderPanels(); }
   const c = e.target.closest("button[data-cb]"); if(c){ cb = c.dataset.cb; store.set("cem_cb", cb); applyLook(); renderPanels(); }
   const r = e.target.closest("#roleSeg2 button[data-role]"); if(r) setRole(r.dataset.role);
-  const k = e.target.closest("#cloSeg button[data-clo]"); if(k){ clo = +k.dataset.clo; store.set("cem_clo", clo); renderPanels(); renderAll(); }
+  const k = e.target.closest("#cloSeg button[data-clo]"); if(k){ clo = k.dataset.clo === "auto" ? "auto" : +k.dataset.clo; store.set("cem_clo", clo); renderPanels(); renderAll(); }
   const pf = e.target.closest("#perfSeg button[data-perf]"); if(pf) setPerfil(pf.dataset.perf);
   const d = e.target.closest("button[data-wdel]");
   if(d){ const id = d.dataset.wdel, box = $("del-" + id); box.hidden = false;

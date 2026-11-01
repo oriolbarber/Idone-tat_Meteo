@@ -4,7 +4,7 @@
 // per al dia i la franja triats, i es pinta com una imatge suavitzada per sota dels marcadors.
 // Només es pinta a prop de les zones (com BoletRadar, que només pinta sobre bosc): lluny no s'hi fa cap estimació.
 // Font de les notes: primer heat.json, que GitHub Actions calcula cada 3 h per a totes les zones (tools/heat-build.mjs,
-// branca «dades»), amb els llindars per defecte i roba normal. Els punts que no hi són (zones noves) i els casos en
+// branca «dades»), amb els llindars per defecte i roba automàtica. Els punts que no hi són (zones noves) i els casos en
 // què el fitxer no arriba es calculen al mòbil amb Open-Meteo, com abans.
 // També pinta la PLUJA PREVISTA (Capes ▸ Pluja) quan el dia enfocat no és avui: mil·límetres de la franja a cada
 // punt de la mateixa graella (heat.json la porta a «rain»; si no, de la previsió baixada al mòbil). Avui mana el radar.

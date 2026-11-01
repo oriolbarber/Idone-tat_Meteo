@@ -3,7 +3,7 @@
 //
 // Graella cada 0,1° a menys de REACH de qualsevol zona (zones.js + zones-osm.js). Per a cada punt es baixa la
 // previsió d'Open-Meteo i es calcula la mateixa nota que fa l'app per a una zona sense parets (sense orientació,
-// roca calcària), amb els llindars per defecte i roba normal, per a cada combinació de modalitat (esportiva |
+// roca calcària), amb els llindars per defecte i roba automàtica, per a cada combinació de modalitat (esportiva |
 // clàssica) i persona (escalant | assegurant), cada dia i cada franja (matí | tarda | dia).
 // El model NO es copia: el carrega tools/app-model.mjs a partir d'app.js.
 // També hi va «rain»: mil·límetres previstos a cada punt per dia i franja (× 10, 255 = sense dades), per a la capa

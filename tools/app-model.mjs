@@ -15,13 +15,13 @@ const SRC = [
   read("zones.js"), read("zones-osm.js"),
   cut("/* ---------- utilitats", "/* ---------- preferències"),
   one(/const CRIT_DEF = \{[\s\S]*?\n\};/), one(/function hzAt\(.*\n/), one(/function distM\(a, b\)\{[^\n]*\n[^\n]*\n/),
-  "let mod = 'esportiva', role = 'climb', clo = 1, slot = 'dia', DATA = null; let crit = structuredClone(CRIT_DEF);",
+  "let mod = 'esportiva', role = 'climb', clo = 'auto', slot = 'dia', DATA = null; let crit = structuredClone(CRIT_DEF);",
   cut("/* ---------- catàleg", "// Preferits (en aquest mòbil)"),          // ZONES amb les d'OSM fusionades, com a l'app
   cut("/* ---------- posició del sol", "/* ---------- parets"),
   cut("/* ---------- dades: Open-Meteo", "// Còpia per obrir sense connexió"),
   cut("/* ---------- model:", "const FR_TXT"),
   `globalThis.M = {ZONES, OSM_ZONES, HV, SHORT, omURL, parseOM, fcHydrate, evalSeries, frSlot, localOf, TZ, distM,
-     set(m, r){ mod = m; role = r; crit = structuredClone(CRIT_DEF); clo = 1; }};`
+     set(m, r){ mod = m; role = r; crit = structuredClone(CRIT_DEF); clo = 'auto'; }};`
 ].join("\n;\n");
 const ctx = vm.createContext({console, Intl, Date, Math, JSON, structuredClone, Object, Array,
   window: {}, document: {getElementById: () => null}, localStorage: {getItem: () => null, setItem(){}}});
