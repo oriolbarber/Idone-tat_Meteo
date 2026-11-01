@@ -1336,7 +1336,12 @@ $("locBtn").addEventListener("click", () => {
 let deferred = null;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; $("install").hidden = false; });
 $("install").addEventListener("click", async () => { if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $("install").hidden = true; });
-if("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+// En arribar una versió nova (el sw nou pren el control), es recarrega una sola vegada perquè es vegi de seguida
+if("serviceWorker" in navigator){
+  const hadSW = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if(hadSW && !reloaded){ reloaded = true; location.reload(); } });
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js", {updateViaCache: "none"}).then(r => r.update()).catch(() => {}));
+}
 addEventListener("online", load);
 // Torna a carregar si l'app ha estat en segon pla més d'una hora
 document.addEventListener("visibilitychange", () => { if(!document.hidden && DATA && Date.now() - DATA.at > 3600e3) load(); });
