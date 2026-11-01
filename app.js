@@ -52,6 +52,7 @@ let userWalls = store.get("cem_walls", []);               // parets traçades en
 let cloudWalls = store.get("cem_cloud_walls", []);        // parets aprovades per a tothom (col·lecció «parets», les porta cloud.js)
 let azFix = store.get("cem_azfix", {});                   // correcció manual: {"paretId:tram": az} i {"s:sector:cara": az}
 let cloudOri = store.get("cem_cloud_ori", {});            // orientacions de sectors aprovades per a tothom: {"s:sector:cara": az} (cloud.js)
+let oriMeta = store.get("cem_ori_meta", {});            // estat i vots de les orientacions de la comunitat: {"s:sector:cara": {id, az, estat, conf, reb, per, prev}}
 let oriProp = store.get("cem_ori_prop", {});              // propostes d'orientació d'aquest mòbil: {"s:sector:cara": {id, az, estat, motiu}}
 let dayKey = null;                                        // dia enfocat (AAAA-MM-DD): el que es mostra en detall
 let selDays = store.get("cem_days", []);                  // dies de la sortida (un o diversos, no cal que siguin seguits)
@@ -111,17 +112,22 @@ function wallsOf(z){
   const pub = cloudWalls.filter(w => w.zone === z.id), ids = new Set(pub.map(w => w.id));
   return z.walls.concat(pub, userWalls.filter(w => w.zone === z.id && !(w.prop && ids.has(w.prop.id))));
 }
-// Estat d'una paret per a l'etiqueta: tothom | pendent | rebutjada | mòbil
+// Estat d'una paret per a l'etiqueta. Les publicades porten «com» (provisional | confirmada) i vots (com.js).
 function wallState(w){
-  if(cloudWalls.includes(w) || w.src === "cataleg") return {k:"pub", t:"Aprovada · per a tothom"};
-  if(w.prop && w.prop.estat === "pendent") return {k:"pend", t:"Proposta pendent de revisió"};
-  if(w.prop && w.prop.estat === "rebutjada") return {k:"rej", t:"Rebutjada" + (w.prop.motiu ? ": " + w.prop.motiu : "")};
+  if(cloudWalls.includes(w) || w.src === "cataleg") return {k:"pub", t:"Confirmada · per a tothom"};
+  const e = w.prop && w.prop.estat;
+  if(e === "pendent") return {k:"pend", t:"Pendent de revisió"};
+  if(e === "revisio") return {k:"rev", t:"En revisió: 2 persones diuen que no és correcta"};
+  if(e === "retirada") return {k:"rej", t:"Retirada per la revisió"};
+  if(e === "rebutjada") return {k:"rej", t:"Rebutjada" + (w.prop.motiu ? ": " + w.prop.motiu : "")};
+  if(e === "provisional" || e === "confirmada") return {k:"pub", t:"Publicada"};
   return {k:"mob", t:"Només en aquest mòbil"};
 }
 function wallTag(w){
-  const st = wallState(w), cls = {pub:"ok", pend:"mid", rej:"no", mob:"na"}[st.k];
+  if(w.com && window.CEM_COM) return CEM_COM.voteHTML("parets", w.id, w.com);
+  const st = wallState(w), cls = {pub:"ok", pend:"mid", rev:"no", rej:"no", mob:"na"}[st.k];
   return `<span class="wtag lv-${cls}">${esc(st.t)}</span>` +
-    ((st.k === "mob" || st.k === "rej") && userWalls.includes(w) ? `<button class="btn sm" type="button" data-propose="${w.id}">Proposa-la</button>` : "");
+    ((st.k === "mob" || st.k === "rej") && userWalls.includes(w) ? `<button class="btn sm" type="button" data-propose="${w.id}">Publica-la</button>` : "");
 }
 function segAz(w, i){ const f = azFix[w.id + ":" + i]; return f != null ? f : w.segs[i].azAuto; }
 // Ombra al peu de la paret (arbres, desplom…): part del sol directe que arriba a la persona i a la roca.
@@ -546,11 +552,11 @@ map.on("load", () => {
   // sectors d'OpenStreetMap: punts blancs des del zoom 11 (els noms, des del 13)
   map.addSource("sectors", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
   map.addLayer({id:"sector-pt", type:"circle", source:"sectors", minzoom:11,
-    paint:{"circle-radius":["interpolate", ["linear"], ["zoom"], 11, 4, 16, 8], "circle-color":"#ffffff", "circle-stroke-color":"#1b1f18", "circle-stroke-width":2}});
-  map.on("click", "sector-pt", e => { if(drawing) return; const p = e.features[0].properties; selSector = p.id; openZone(p.zone); });
+    paint:{"circle-radius":["interpolate", ["linear"], ["zoom"], 11, 4, 16, 8], "circle-color":["case", ["==", ["get", "p"], 1], "#ffb000", "#ffffff"], "circle-stroke-color":"#1b1f18", "circle-stroke-width":2}});
+  map.on("click", "sector-pt", e => { if(drawing || window.CEM_PICK) return; const p = e.features[0].properties; selSector = p.id; openZone(p.zone); });
   map.on("mouseenter", "sector-pt", () => map.getCanvas().style.cursor = "pointer");
   map.on("mouseleave", "sector-pt", () => map.getCanvas().style.cursor = "");
-  map.on("click", "wall-line", e => { if(drawing) return; const f = e.features[0]; const z = ZONES.find(z => z.id === f.properties.zone); if(z) openZone(z.id); });
+  map.on("click", "wall-line", e => { if(drawing || window.CEM_PICK) return; const f = e.features[0]; const z = ZONES.find(z => z.id === f.properties.zone); if(z) openZone(z.id); });
   applyBase(); applyLayers(); renderWalls(); renderMarkers();
   if(t3d) apply3D();
 });
@@ -582,7 +588,7 @@ function zonesGeoJSON(){
 function renderSectors(){
   if(!map.getSource("sectors")) return;
   const f = [];
-  shown().forEach(z => (z.sectors || []).forEach(s => f.push({type:"Feature", properties:{id:s.id, zone:z.id, name:s.name || ""}, geometry:{type:"Point", coordinates:[s.lon, s.lat]}})));
+  shown().forEach(z => (z.sectors || []).forEach(s => f.push({type:"Feature", properties:{id:s.id, zone:z.id, name:s.name || "", p: s.com && s.com.estat !== "confirmada" ? 1 : 0}, geometry:{type:"Point", coordinates:[s.lon, s.lat]}})));
   map.getSource("sectors").setData({type:"FeatureCollection", features:f});
   sectorLabels();
 }
@@ -804,13 +810,14 @@ function robaHTML(rows, o){
 }
 
 // D'on surt l'orientació d'un sector, i l'estat de la proposta si se n'ha corregit en aquest mòbil
-const ORI_SRC = {mob:"corregida en aquest mòbil", com:"corregida per la comunitat", dem:"estimada amb el relleu", osm:"OpenStreetMap"};
+const ORI_SRC = {mob:"corregida en aquest mòbil", com:"corregida per la comunitat", dem:"estimada amb el relleu", osm:"OpenStreetMap", usr:"sector de la comunitat"};
 function oriPropHTML(x){
+  if(x.src === "com"){ const m = oriMeta[x.key]; return m && m.az === x.az && window.CEM_COM ? CEM_COM.voteHTML("orientacions", m.id, m) : ""; }
   if(x.src !== "mob") return "";
   const p = oriProp[x.key];
   if(p && p.az === azFix[x.key] && p.estat === "pendent") return `<span class="wtag lv-mid">Proposta pendent de revisió</span>`;
   const rej = p && p.az === azFix[x.key] && p.estat === "rebutjada" ? `<span class="wtag lv-no">Rebutjada${p.motiu ? ": " + esc(p.motiu) : ""}</span>` : "";
-  return rej + `<button class="btn sm" type="button" data-propori="${esc(x.key)}">Proposa-la a tothom</button>`;
+  return rej + `<button class="btn sm" type="button" data-propori="${esc(x.key)}">Publica-la per a tothom</button>`;
 }
 
 // Sectors de la zona (OpenStreetMap): nom i coordenades, amb «Copia» i l'app de mapes del mòbil
@@ -819,7 +826,9 @@ function mapHrefOf(lat, lon, name){
   return isIOS ? `https://maps.apple.com/?ll=${lat},${lon}&q=${encodeURIComponent(name)}` : /Android/.test(navigator.userAgent) ? `geo:${lat},${lon}?q=${lat},${lon}(${encodeURIComponent(name)})` : "";
 }
 function sectorsHTML(z, ev, best){
-  const ss = z.sectors || []; if(!ss.length) return "";
+  const ss = z.sectors || [];
+  const add = `<button class="btn sm" type="button" data-csec="${esc(z.id)}">+ Sector nou</button>`;
+  if(!ss.length) return `<div class="crow"><span class="muted">Cap sector conegut en aquesta zona.</span>${add}</div>`;
   const open = ss.length <= 8 || ss.some(s => s.id === selSector), hasF = ss.some(s => s.f);
   return `<details class="more secs"${open ? " open" : ""}><summary>Sectors (${ss.length})${INF("osm")}</summary>${hasF ? SUN_LEG : ""}<ul class="seclist">` +
     ss.map(s => { const ll = `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}`, nm = s.name || (s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), href = mapHrefOf(s.lat, s.lon, nm);
@@ -832,8 +841,9 @@ function sectorsHTML(z, ev, best){
       const ot = [...new Set(fs.map(x => cardOf(x.az)))].join("/");
       return `<li${s.id === selSector ? ' class="sel"' : ""}><span class="sn"><b>${esc(nm)}${ot ? " – " + ot : ""}</b><small class="num">${s.kind === "bloc" ? "bloc · " : ""}${ll}</small></span>` +
         `<button class="btn sm" type="button" data-copy="${ll}">Copia</button>` + (href ? `<a class="btn sm" href="${href}">Mapa</a>` : "") +
+        (s.com && window.CEM_COM ? CEM_COM.voteHTML("sectors", s.com.id, s.com) : "") +
         (face || `<div class="sface"><small class="muted">Orientació desconeguda (terreny massa pla o fora del relleu de Catalunya)</small></div>`) + `</li>`; }).join("") +
-    `</ul><p class="note">Sectors d'OpenStreetMap (© col·laboradors d'OSM, ODbL). Si en falta algun o està mal situat, es pot corregir a OpenStreetMap.</p></details>`;
+    `</ul><div class="crow">${add}</div><p class="note">Sectors d'OpenStreetMap (© col·laboradors d'OSM, ODbL) i de la comunitat de CEM. Si en falta algun, afegeix-lo amb «+ Sector nou».</p></details>`;
 }
 let selSector = null;
 function renderSheet(){
@@ -898,6 +908,7 @@ function renderSheet(){
   h += `<div class="zloc"><span>📍 ${ll}${z.src === "provisional" ? " · aproximades" : ""}</span>` +
     `<button class="ib" type="button" data-copy="${ll}" aria-label="Copia les coordenades"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg></button>` +
     (mapHref ? `<a class="btn sm pri" href="${mapHref}">Com arribar</a>` : "") + `</div>`;
+  if(window.CEM_COM) h += CEM_COM.rockHTML(z);
   h += sectorsHTML(z, ev, cur.seg);
   if(window.CEM_R) h += CEM_R.sheetHTML(z);
   // parets

@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=14">
+<link rel="stylesheet" href="app.css?v=15">
 </head>
 <body>
 
@@ -117,6 +117,22 @@
 <div class="msg" id="msg" role="status">Carregant la previsió…</div>
 
 <!-- traçat de paret -->
+<!-- aportacions: botó + (com.js) -->
+<button class="fab" type="button" id="addBtn" aria-label="Afegeix al mapa" aria-expanded="false" aria-controls="addMenu">
+  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+<div class="card add-menu" id="addMenu" hidden>
+  <button type="button" data-add="sector"><b>Sector nou</b><small>Toca el mapa on és</small></button>
+  <button type="button" data-add="paret"><b>Paret nova</b><small>Traça el peu del cingle</small></button>
+  <button type="button" data-add="zona"><b>Corregeix una zona</b><small>Roca, orientació, restriccions</small></button>
+</div>
+<div class="card draw-bar" id="pickBar" hidden>
+  <p id="pickTxt">Toca el mapa al peu del sector.</p>
+  <div class="row">
+    <button class="btn" type="button" id="pickCancel">Cancel·la</button>
+    <button class="btn pri" type="button" id="pickDone" disabled>Fet</button>
+  </div>
+</div>
 <div class="card draw-bar" id="drawBar" hidden>
   <p id="drawTxt">Toca el mapa al llarg del cingle, d'una punta a l'altra.</p>
   <div class="row">
@@ -145,8 +161,8 @@
   <div class="pbar"><button class="ib flat" type="button" data-close aria-label="Enrere">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Menú</h2><span></span></div>
   <nav class="plist">
-    <button type="button" data-page="pCompte"><b>Compte<span class="badge" id="accBadge" hidden>!</span></b><small id="peekAcc">Sense compte: entra per proposar parets</small></button>
-    <button type="button" data-page="pRevisio" id="rowRev" hidden><b>Revisió<span class="badge" id="revBadge" hidden></span></b><small id="peekRev">Propostes per aprovar</small></button>
+    <button type="button" data-page="pCompte"><b>Compte<span class="badge" id="accBadge" hidden>!</span></b><small id="peekAcc">Sense compte: entra per aportar</small></button>
+    <button type="button" data-page="pRevisio" id="rowRev" hidden><b>Revisió<span class="badge" id="revBadge" hidden></span></b><small id="peekRev">Aportacions per revisar</small></button>
     <button type="button" data-page="pAspecte"><b>Aspecte</b><small id="peekAsp"></small></button>
     <button type="button" data-page="pLlindars"><b>Llindars</b><small id="peekLl"></small></button>
     <button type="button" data-page="pParets"><b>Parets</b><small id="peekPar"></small></button>
@@ -222,19 +238,25 @@
 
 <div class="panel" id="pLlicencia" hidden>
   <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="licTitle">Proposa la paret</h2><span></span></div>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="licTitle">Publica la paret</h2><span></span></div>
   <div class="pbody acc">
     <p id="licWall"></p>
     <div class="legal" id="licLegal">
-      <p><b>Què passa ara:</b> la paret queda pendent. Quan una persona revisora l'aprovi, la veurà tothom i comptarà al veredicte de la zona.</p>
+      <p><b>Què passa ara:</b> la paret es publica a l'instant com a <b>provisional</b>: la veurà tothom i comptarà al veredicte de la zona. Quan 2 persones la confirmin, quedarà confirmada; si 2 diuen que no és correcta, s'amagarà fins que la revisin.</p>
       <p><b>Llicència:</b> les dades de la paret (traçat, orientació, horitzó i exposició) s'incorporen al catàleg de CEM, que es publica sota la llicència oberta <b>ODbL 1.0</b> (la mateixa que OpenStreetMap). Vol dir que CEM les pot publicar, modificar i compartir, i que qualsevol pot reutilitzar el catàleg citant-ne la font.</p>
       <p><b>Garanties:</b> confirmes que la paret l'has traçada tu i que no l'has copiada de cap guia ni ressenya protegida.</p>
-      <p><b>Dades personals:</b> la paret aprovada no porta el teu nom. La proposta guarda qui l'ha enviada només fins que es revisa.</p>
+      <p><b>Dades personals:</b> la paret no porta el teu nom, només un identificador intern del compte (perquè no la puguis confirmar tu mateix). Si esborres el compte, s'esborren les que encara no estan confirmades.</p>
     </div>
     <label class="ck"><input type="checkbox" id="licCk"> <span id="licCkTxt">Accepto que la paret s'incorpori al catàleg sota la llicència ODbL 1.0.</span></label>
     <div class="amsg" data-accmsg hidden></div>
-    <button class="btn pri" type="button" id="licSend">Envia la proposta</button>
+    <button class="btn pri" type="button" id="licSend">Publica</button>
   </div>
+</div>
+
+<div class="panel" id="pCom" hidden>
+  <div class="pbar"><button class="ib flat" type="button" data-back aria-label="Enrere">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="cfTitle">Sector nou</h2><span></span></div>
+  <div class="pbody acc" id="cfBody"></div>
 </div>
 
 <div class="panel" id="pRestr" hidden>
@@ -276,10 +298,11 @@
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
 <script src="zones-osm.js?v=1"></script>
-<script src="app.js?v=23"></script>
-<script src="cloud.js?v=4"></script>
+<script src="app.js?v=24"></script>
+<script src="cloud.js?v=5"></script>
 <script src="conf.js?v=2"></script>
 <script src="restr.js?v=1"></script>
+<script src="com.js?v=1"></script>
 <script src="heat.js?v=4"></script>
 </body>
 </html>

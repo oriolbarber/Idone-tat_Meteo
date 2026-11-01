@@ -414,3 +414,22 @@ a.btn.pri{color:var(--on-accent)}
 .ba{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0}
 .ba span:first-child{color:var(--muted)}
 .shfix{margin:6px 0}
+
+/* aportacions de la comunitat (com.js, 01-11-2026) */
+.fab{position:fixed;z-index:16;right:12px;bottom:calc(var(--daybar-h,96px) + 24px + env(safe-area-inset-bottom,0px));width:60px;height:60px;border-radius:50%;
+  border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.fab[aria-expanded="true"] svg{transform:rotate(45deg)}
+.fab svg{transition:transform .15s}
+body.drawing .fab{display:none}
+.add-menu{position:fixed;z-index:17;right:12px;bottom:calc(var(--daybar-h,96px) + 92px + env(safe-area-inset-bottom,0px));width:min(300px, calc(100% - 24px));padding:6px;display:flex;flex-direction:column;gap:4px}
+.add-menu button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:0;background:transparent;border-radius:12px;padding:10px 12px;min-height:56px;cursor:pointer;color:var(--ink);font-size:1em}
+.add-menu button:hover,.add-menu button:focus-visible{background:var(--surface-2)}
+.add-menu small{color:var(--muted);font-size:.82em}
+.vrow{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.crow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}
+.crow > span:first-child{flex:1;min-width:140px}
+.rvh{margin:12px 0 4px;font-size:1em}
+.seg.wrap{display:flex}
+.acc .fl{display:block;font-weight:700;margin-bottom:4px}
+.crow .vrow,.seclist .vrow{flex-basis:100%}
+.vrow .btn.sm{min-height:44px}

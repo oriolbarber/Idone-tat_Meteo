@@ -4,10 +4,12 @@
    - Les parets aprovades (col·lecció «parets», lectura pública) es llegeixen amb l'API REST de Firestore,
      sense descarregar Firebase. Firebase només es carrega si en aquest mòbil ja s'havia entrat, si s'obre
      un enllaç d'accés o si es prem un botó del compte.
-   - Proposar una paret: compte amb el correu confirmat + acceptar la llicència ODbL 1.0. Queda pendent
-     fins que la revisa l'administració, un revisor o un premium.
-   - Proposar l'orientació d'un sector d'OSM (tipus «orientacio»): mateix circuit; un cop aprovada va a
-     «orientacions/{sector}_{cara}» (lectura pública) i mana sobre la d'OSM o la calculada amb el relleu.
+   - Publicar una paret: compte amb el correu confirmat + acceptar la llicència ODbL 1.0. Va directament a
+     «parets» com a «provisional» i la veu tothom; 2 confirmacions d'altres persones = «confirmada»;
+     2 rebutjos = «revisio» (s'amaga i la mira la revisió). Ho gestiona com.js (vots, safata, sectors i roca).
+   - Orientació d'un sector: igual, a «orientacions/{sector}_{cara}» (lectura pública) amb «prev» = l'últim
+     valor confirmat, per poder-lo restaurar. Mana sobre la d'OSM o la calculada amb el relleu.
+   - Les propostes antigues («propostes», pendents de revisió) es continuen podent aprovar.
    Firestore no accepta llistes dins de llistes: el traçat i els trams van com a JSON al camp «d». */
 (() => {
 const FB_VER = "13.0.0";
@@ -59,8 +61,23 @@ const val = id => ($(id) && $(id).value || "").trim();
 
 /* ---------- parets aprovades: API REST pública (sense Firebase) ---------- */
 function wallFromDoc(id, f){
-  try{ const d = JSON.parse(f.d); return {id, zone:f.zone, name:f.name || "Paret", exp:f.exp || "exposat", pts:d.pts, segs:d.segs, src:"cloud"}; }catch(e){ return null; }
+  try{ const d = JSON.parse(f.d); return {id, zone:f.zone, name:f.name || "Paret", exp:f.exp || "exposat", pts:d.pts, segs:d.segs, src:"cloud", com:comOf(f)}; }catch(e){ return null; }
 }
+// Valor de l'API REST → JS (mapes per als vots «conf» i «reb»)
+function decodeV(v){
+  if(v == null) return null;
+  if("stringValue" in v) return v.stringValue;
+  if("integerValue" in v) return +v.integerValue;
+  if("doubleValue" in v) return v.doubleValue;
+  if("booleanValue" in v) return v.booleanValue;
+  if("timestampValue" in v) return v.timestampValue;
+  if("mapValue" in v){ const o = {}; Object.entries(v.mapValue.fields || {}).forEach(([k, x]) => o[k] = decodeV(x)); return o; }
+  if("arrayValue" in v) return (v.arrayValue.values || []).map(decodeV);
+  return null;
+}
+// Estat i vots d'una aportació (les antigues, sense estat, compten com a confirmades)
+const comOf = f => ({estat: f.estat || "confirmada", conf: f.conf || {}, reb: f.reb || {}, per: f.per || "", prev: f.prev ?? null});
+const HIDDEN = new Set(["revisio", "pendent"]);   // no es mostren a l'app
 // Llegeix tota una col·lecció pública amb l'API REST: [{id, f:{camp: valor}}]
 async function restList(col){
   const base = `https://firestore.googleapis.com/v1/projects/${FB_CONFIG.projectId}/databases/(default)/documents/${col}?pageSize=300&key=${FB_CONFIG.apiKey}`;
@@ -70,7 +87,7 @@ async function restList(col){
     if(!r.ok) throw new Error("HTTP " + r.status);
     const j = await r.json();
     (j.documents || []).forEach(doc => {
-      const f = {}; Object.entries(doc.fields || {}).forEach(([k, v]) => f[k] = v.stringValue ?? (v.integerValue != null ? +v.integerValue : v.doubleValue ?? null));
+      const f = {}; Object.entries(doc.fields || {}).forEach(([k, v]) => f[k] = decodeV(v));
       out.push({id: doc.name.split("/").pop(), f});
     });
     tok = j.nextPageToken || "";
@@ -81,9 +98,19 @@ async function fetchPublic(force){
   if(!force && Date.now() - store.get("cem_cloud_at", 0) < PUB_TTL) return;
   try{
     const [ws, os, om] = await Promise.all([restList("parets"), restList("orientacions"), restList("ombres").catch(() => null)]);
-    cloudWalls = ws.map(d => wallFromDoc(d.id, d.f)).filter(Boolean); store.set("cem_cloud_walls", cloudWalls);
-    const co = {}; os.forEach(d => { if(d.f.sector && d.f.az != null) co["s:" + d.f.sector + ":" + (d.f.cara || 0)] = d.f.az; });
-    cloudOri = co; store.set("cem_cloud_ori", co);
+    const all = ws.map(d => wallFromDoc(d.id, d.f)).filter(Boolean);
+    cloudWalls = all.filter(w => !HIDDEN.has(w.com.estat)); store.set("cem_cloud_walls", cloudWalls);
+    // estat de les parets d'aquest mòbil ja publicades (també les amagades, perquè qui les ha fet sàpiga què passa)
+    const byId = {}; all.forEach(w => byId[w.id] = w); let cw = false;
+    userWalls.forEach(w => { if(!w.prop || w.prop.col !== "parets") return; const c = byId[w.prop.id];
+      const e = c ? c.com.estat : "retirada"; if(e !== w.prop.estat){ w.prop.estat = e; cw = true; } });
+    if(cw) store.set("cem_walls", userWalls);
+    // orientacions: les visibles manen; la resta (estat i vots) per a la fitxa
+    const co = {}, oM = {};
+    os.forEach(d => { if(!d.f.sector || d.f.az == null) return; const k = "s:" + d.f.sector + ":" + (d.f.cara || 0), c = comOf(d.f);
+      oM[k] = Object.assign({id: d.id, az: d.f.az, zone: d.f.zone}, c);
+      if(!HIDDEN.has(c.estat)) co[k] = d.f.az; else if(c.prev != null) co[k] = c.prev; });
+    cloudOri = co; store.set("cem_cloud_ori", co); oriMeta = oM; store.set("cem_ori_meta", oM);
     // nivell d'ombra al peu de les parets, ajustat amb les valoracions de confort (clau: "paretId:tram" o "s:sector:cara")
     if(om){ const cs = {}; om.forEach(d => { if(d.f.key && d.f.nivell != null) cs[d.f.key] = d.f.nivell; }); cloudShade = cs; store.set("cem_cloud_shade", cs); }
     // la correcció d'aquest mòbil que ja és la de tothom s'esborra: així, si la comunitat la torna a canviar, arriba
@@ -127,8 +154,10 @@ async function onUser(u){
     if(!prof){ const c = store.get("cem_consent"); if(c && c.v === CONSENT_V) await createProfile(c.nom); }
     await refreshMine();
     if(isRev) await refreshPending();
+    if(isRev && window.CEM_COM) CEM_COM.revLoad();
   }catch(e){ say(errText(e), true); }
   ready = true; render(); badges();
+  if(window.CEM_COM) CEM_COM.render();
 }
 async function readProfile(){
   const f = await fs();
@@ -170,7 +199,7 @@ async function passCreate(){
   say("Creant el compte…");
   try{ await load(); const c = await A.createUserWithEmailAndPassword(auth, mail, pw);
     try{ await A.sendEmailVerification(c.user, {url: linkUrl()}); }catch(e){}
-    say(`Compte creat. T'hem enviat un correu a ${mail} per confirmar-lo: obre'l per poder proposar parets. Mira també el correu brossa.`); }
+    say(`Compte creat. T'hem enviat un correu a ${mail} per confirmar-lo: obre'l per poder publicar aportacions. Mira també el correu brossa.`); }
   catch(e){ store.set("cem_consent", null); say(errText(e), true); }
 }
 async function passReset(){
@@ -205,7 +234,7 @@ async function resendVerify(){
 }
 async function checkVerify(){
   try{ await user.reload(); await user.getIdToken(true); user = auth.currentUser; await readProfile(); render(); badges();
-    say(verified() ? "Correu confirmat. Ja pots proposar parets." : "Encara no consta confirmat. Obre l'enllaç del correu i torna-ho a provar.", !verified()); }
+    say(verified() ? "Correu confirmat. Ja pots publicar aportacions." : "Encara no consta confirmat. Obre l'enllaç del correu i torna-ho a provar.", !verified()); }
   catch(e){ say(errText(e), true); }
 }
 async function logout(){ try{ await A.signOut(auth); say("Has tancat la sessió. Les parets d'aquest mòbil s'hi queden."); }catch(e){ say(errText(e), true); } }
@@ -227,6 +256,11 @@ async function deleteAccount(){
     const f = await fs();
     const qs = await f.getDocs(f.query(f.collection(db, "propostes"), f.where("userId", "==", user.uid)));
     for(const d of qs.docs) await f.deleteDoc(d.ref);
+    // aportacions encara no confirmades (parets i sectors nous); les confirmades queden al catàleg
+    for(const col of ["parets", "sectors"]){
+      const qa = await f.getDocs(f.query(f.collection(db, col), f.where("per", "==", user.uid))).catch(() => ({docs: []}));
+      for(const d of qa.docs) if(["provisional", "pendent"].includes(d.data().estat)) await f.deleteDoc(d.ref).catch(() => {});
+    }
     const qv = await f.getDocs(f.query(f.collection(db, "valoracions"), f.where("userId", "==", user.uid))).catch(() => ({docs: []}));
     for(const d of qv.docs) await f.deleteDoc(d.ref);
     await f.deleteDoc(f.doc(db, "usuaris", user.uid)).catch(() => {});
@@ -237,10 +271,24 @@ async function deleteAccount(){
   }catch(e){ say(errText(e), true); render(); }
 }
 
-/* ---------- proposar una paret ---------- */
+/* ---------- comptador d'aportacions (límit dels comptes nous, comprovat a firestore.rules) ---------- */
+const dayN = () => Math.floor(Date.now() / 86400000);
+const est0 = () => isRev ? "confirmada" : prof && prof.revisar === true ? "pendent" : "provisional";
+function nextCount(){ return {dia: dayN(), n: prof && prof.dia === dayN() ? (prof.n || 0) + 1 : 1}; }
+function newAccount(){ const c = prof && prof.creat && prof.creat.seconds; return !c || Date.now() - c * 1000 < 7 * 86400e3; }
+// Afegeix al batch l'increment del comptador; torna el missatge d'error si ja s'ha arribat al límit
+function bump(f, b){
+  const nc = nextCount();
+  if(!isRev && nc.n > 5 && newAccount()) return "Els comptes nous poden fer 5 aportacions al dia. Demà en podràs fer més.";
+  b.update(f.doc(db, "usuaris", user.uid), nc); bump.last = nc; return null;
+}
+function bumped(){ if(bump.last && prof){ prof.dia = bump.last.dia; prof.n = bump.last.n; } }
+const ST_TXT = {provisional: "Publicada com a provisional: quan 2 persones la confirmin, quedarà confirmada.", confirmada: "Publicada i confirmada.", pendent: "Enviada: la revisió la mirarà abans de publicar-la."};
+
+/* ---------- publicar una paret ---------- */
 function propose(id){
   const w = userWalls.find(w => w.id === id); if(!w) return;
-  if(!user){ mode = store.get("cem_had") ? "entra" : "alta"; openPanel("pCompte"); load().catch(() => {}); setTimeout(() => say("Per proposar parets cal un compte. Entra o fes-te'n un: és gratuït.", false), 50); return; }
+  if(!user){ mode = store.get("cem_had") ? "entra" : "alta"; openPanel("pCompte"); load().catch(() => {}); setTimeout(() => say("Per publicar parets cal un compte. Entra o fes-te'n un: és gratuït.", false), 50); return; }
   if(!verified()){ openPanel("pCompte"); setTimeout(() => say("Abans de proposar, confirma el correu: obre l'enllaç que t'hem enviat i prem «Ja l'he confirmat».", true), 50); return; }
   if(w.segs.some((s, i) => segAz(w, i) == null)){ msg("Fixa l'orientació de tots els trams abans de proposar la paret.", true); setTimeout(() => msg(null), 5000); return; }
   licOri = null; licReset(); licWall = w; const z = ZONES.find(z => z.id === w.zone);
@@ -249,7 +297,7 @@ function propose(id){
   openPanel("pLlicencia"); say("");
 }
 // Proposar l'orientació d'un sector (la correcció que s'ha fet en aquest mòbil)
-const LIC_WALL = {title: "Proposa la paret", ck: "", legal: ""};
+const LIC_WALL = {title: "Publica la paret", ck: "", legal: ""};
 function sectorOf(key){
   const [, sid, cara] = key.split(":");
   for(const z of ZONES){ const s = (z.sectors || []).find(s => s.id === sid); if(s && s.f && s.f[+cara]) return {z, s, cara: +cara, f: s.f[+cara]}; }
@@ -262,12 +310,12 @@ function proposeOri(key){
   const name = x.s.name || (x.s.kind === "bloc" ? "Bloc sense nom" : "Sector sense nom"), now = cloudOri[key] ?? x.f.az;
   licWall = null; licOri = {key, zone: x.z.id, sector: x.s.id, cara: x.cara, name, az, azAuto: now};
   if(!LIC_WALL.legal){ LIC_WALL.title = $("licTitle").textContent; LIC_WALL.legal = $("licLegal").innerHTML; LIC_WALL.ck = $("licCkTxt").textContent; }
-  $("licTitle").textContent = "Proposa l'orientació";
+  $("licTitle").textContent = "Publica l'orientació";
   $("licWall").innerHTML = `<b>${esc(name)}</b> · ${esc(x.z.name)} · ara mira al <b>${cardOf(now)}</b> (${cloudOri[key] != null ? "comunitat" : x.s.o === "dem" ? "estimada amb el relleu" : "OpenStreetMap"}) → proposes <b>${cardOf(az)}</b>`;
-  $("licLegal").innerHTML = `<p><b>Què passa ara:</b> la correcció queda pendent. Quan una persona revisora l'aprovi, la veurà tothom i canviarà el sol i l'ombra del sector i el veredicte de la zona.</p>
+  $("licLegal").innerHTML = `<p><b>Què passa ara:</b> la veurà tothom a l'instant com a <b>provisional</b> i canviarà el sol i l'ombra del sector i el veredicte de la zona. Quan 2 persones la confirmin, quedarà confirmada; si 2 diuen que no és correcta, es tornarà a l'anterior fins que la revisin.</p>
     <p><b>Llicència:</b> l'orientació s'incorpora al catàleg de CEM sota la llicència oberta <b>ODbL 1.0</b>, com les parets i les dades d'OpenStreetMap.</p>
     <p><b>Garanties:</b> confirmes que l'orientació la coneixes per haver-hi estat o per observació pròpia, no copiada d'una guia protegida.</p>
-    <p><b>Dades personals:</b> l'orientació aprovada no porta el teu nom.</p>
+    <p><b>Dades personals:</b> l'orientació no porta el teu nom (només un identificador intern del compte, perquè no la puguis confirmar tu mateix).</p>
     <p class="note">També la pots posar a OpenStreetMap (etiqueta climbing:orientation): així la tindran totes les apps.</p>`;
   $("licCkTxt").textContent = "Accepto que l'orientació s'incorpori al catàleg sota la llicència ODbL 1.0.";
   $("licCk").checked = !!(prof && prof.odblAt);
@@ -276,36 +324,45 @@ function proposeOri(key){
 function licReset(){ if(!LIC_WALL.legal) return; $("licTitle").textContent = LIC_WALL.title; $("licLegal").innerHTML = LIC_WALL.legal; $("licCkTxt").textContent = LIC_WALL.ck; }
 async function sendOri(){
   const o = licOri; if(!o) return;
-  if(!$("licCk").checked){ say("Per enviar la proposta cal acceptar la llicència.", true); return; }
-  say("Enviant la proposta…");
+  if(!$("licCk").checked){ say("Per publicar cal acceptar la llicència.", true); return; }
+  say("Publicant…");
   try{
-    const f = await fs();
-    const ref = await T(f.addDoc(f.collection(db, "propostes"), {userId:user.uid, tipus:"orientacio", zone:o.zone, name:String(o.name).slice(0, 80),
-      sector:o.sector, cara:o.cara, az:o.az, azAuto:o.azAuto, estat:"pendent", llicencia:LIC, licAt:f.serverTimestamp(), creat:f.serverTimestamp()}));
+    const f = await fs(), id = o.sector + "_" + o.cara, ref = f.doc(db, "orientacions", id);
+    // «prev» ha de ser l'últim valor confirmat: es llegeix el document ara, no el de la memòria
+    const cur = await T(f.getDoc(ref)), c = cur.exists() ? cur.data() : null;
+    if(c && HIDDEN.has(c.estat)){ say("Aquesta orientació és en revisió: espera que la revisin.", true); return; }
+    const prev = c ? ((c.estat || "confirmada") === "confirmada" ? c.az : c.prev ?? null) : null;
+    const b = f.writeBatch(db), lim = bump(f, b); if(lim){ say(lim, true); return; }
+    const estat = est0();
+    b.set(ref, {sector:o.sector, cara:o.cara, zone:o.zone, az:o.az, prev, estat, conf:{}, reb:{}, per:user.uid, llicencia:LIC, act:f.serverTimestamp()});
+    await T(b.commit()); bumped();
     if(!prof.odblAt){ await f.updateDoc(f.doc(db, "usuaris", user.uid), {odblAt:f.serverTimestamp()}).catch(() => {}); prof.odblAt = true; }
-    oriProp[o.key] = {id: ref.id, az: o.az, estat: "pendent"}; store.set("cem_ori_prop", oriProp);
-    $("pLlicencia").hidden = true; licOri = null; licReset(); renderAll();
-    msg("Proposta enviada. Quan la revisin, la veurà tothom."); setTimeout(() => msg(null), 5000);
-    if(isRev) refreshPending();
+    oriMeta[o.key] = {id, az:o.az, zone:o.zone, estat, conf:{}, reb:{}, per:user.uid, prev}; store.set("cem_ori_meta", oriMeta);
+    if(estat !== "pendent"){ cloudOri[o.key] = o.az; store.set("cem_cloud_ori", cloudOri); delete azFix[o.key]; store.set("cem_azfix", azFix); }
+    else { oriProp[o.key] = {id, az:o.az, estat:"pendent"}; store.set("cem_ori_prop", oriProp); }
+    $("pLlicencia").hidden = true; licOri = null; licReset(); cache.clear(); renderAll();
+    msg(ST_TXT[estat]); setTimeout(() => msg(null), 6000);
   }catch(e){ say(errText(e), true); }
 }
 async function sendProposal(){
   if(licOri) return sendOri();
   const w = licWall; if(!w) return;
   if(!$("licCk").checked){ say("Per enviar la proposta cal acceptar la llicència.", true); return; }
-  say("Enviant la proposta…");
+  say("Publicant…");
   try{
     const f = await fs();
-    // La proposta porta l'orientació final de cada tram (amb la correcció manual, si n'hi ha)
-    const segs = w.segs.map((s, i) => ({azAuto: s.azAuto, az: segAz(w, i), hz: s.hz, om: shadeOf(w.id + ":" + i, s.om).lv}));
-    const ref = await T(f.addDoc(f.collection(db, "propostes"), {userId:user.uid, tipus:"paret", zone:w.zone, name:String(w.name).slice(0, 80),
-      exp:w.exp === "arrecerat" ? "arrecerat" : "exposat", d:JSON.stringify({pts:w.pts, segs}), estat:"pendent", llicencia:LIC,
-      licAt:f.serverTimestamp(), creat:f.serverTimestamp()}));
+    // A la paret publicada, l'orientació final de cada tram (amb la correcció manual) passa a ser la de fàbrica
+    const segs = w.segs.map((s, i) => ({azAuto: segAz(w, i), hz: s.hz, om: shadeOf(w.id + ":" + i, s.om).lv}));
+    const ref = f.doc(f.collection(db, "parets")), b = f.writeBatch(db), lim = bump(f, b); if(lim){ say(lim, true); return; }
+    const estat = est0(), name = String(w.name).slice(0, 80), exp = w.exp === "arrecerat" ? "arrecerat" : "exposat", d = JSON.stringify({pts:w.pts, segs});
+    b.set(ref, {zone:w.zone, name, exp, d, llicencia:LIC, v:1, estat, conf:{}, reb:{}, per:user.uid, act:f.serverTimestamp()});
+    await T(b.commit()); bumped();
     if(!prof.odblAt){ await f.updateDoc(f.doc(db, "usuaris", user.uid), {odblAt:f.serverTimestamp()}).catch(() => {}); prof.odblAt = true; }
-    w.prop = {id: ref.id, estat:"pendent"}; saveWalls(); renderAll();
+    w.prop = {id: ref.id, col:"parets", estat};
+    if(estat !== "pendent"){ cloudWalls.push({id:ref.id, zone:w.zone, name, exp, pts:w.pts, segs, src:"cloud", com:{estat, conf:{}, reb:{}, per:user.uid, prev:null}}); store.set("cem_cloud_walls", cloudWalls); }
+    saveWalls(); renderAll();
     $("pLlicencia").hidden = true; licWall = null;
-    msg("Proposta enviada. Quan la revisin, la veurà tothom."); setTimeout(() => msg(null), 5000);
-    if(isRev) refreshPending();
+    msg(ST_TXT[estat]); setTimeout(() => msg(null), 6000);
   }catch(e){ say(errText(e), true); }
 }
 // Estat de les meves propostes (des de qualsevol mòbil): actualitza les parets d'aquest mòbil
@@ -315,7 +372,7 @@ async function refreshMine(){
   const qs = await T(f.getDocs(f.query(f.collection(db, "propostes"), f.where("userId", "==", user.uid))));
   const byId = {}; qs.forEach(d => byId[d.id] = d.data());
   let ch = false;
-  userWalls.forEach(w => { if(!w.prop) return; const p = byId[w.prop.id];
+  userWalls.forEach(w => { if(!w.prop || w.prop.col) return; const p = byId[w.prop.id];
     if(!p){ delete w.prop; ch = true; return; }
     if(p.estat !== w.prop.estat || (p.motiu || "") !== (w.prop.motiu || "")){ w.prop = {id:w.prop.id, estat:p.estat, motiu:p.motiu || ""}; ch = true; } });
   if(ch) saveWalls();
@@ -358,6 +415,7 @@ function renderRev(){
       : `<div class="row"><button class="btn" type="button" data-rv="show" data-id="${p.id}">Al mapa</button>` +
         `<button class="btn" type="button" data-rv="reject" data-id="${p.id}">Rebutja</button><button class="btn pri" type="button" data-rv="approve" data-id="${p.id}">Aprova</button></div>`) + `</div>`;
   }).join("") : `<p class="note">No hi ha cap proposta pendent.</p>`);
+  if(window.CEM_COM) CEM_COM.revRender(box);
   if(window.CEM_CONF) CEM_CONF.revRender(box);
 }
 async function approve(id){
@@ -429,7 +487,7 @@ function render(){
   let h = `<div class="amsg${flash.err ? " err" : ""}" data-accmsg${flash.t ? "" : " hidden"}>${esc(flash.t)}</div>`;
   if(!ready && store.get("cem_cloud")){ box.innerHTML = h + `<p class="note">Comprovant la sessió…</p>`; return; }
   if(!user){
-    h += `<p class="note">Sense compte pots fer-ho tot excepte proposar parets perquè les vegi tothom.</p>` +
+    h += `<p class="note">Sense compte pots fer-ho tot excepte publicar parets, sectors o correccions perquè les vegi tothom, i confirmar les dels altres.</p>` +
       `<div class="seg" role="group" aria-label="Tipus d'accés" id="accMode"><button type="button" data-m="entra" aria-pressed="${mode === "entra"}">Entra</button>` +
       `<button type="button" data-m="alta" aria-pressed="${mode === "alta"}">Alta nova</button></div>` +
       (mode === "alta" ? `<label>Nom<input type="text" id="accName" autocomplete="name" maxlength="80"></label>` : "") +
@@ -446,7 +504,7 @@ function render(){
       `<button class="btn pri" type="button" data-acc="profile">Crea el perfil</button><button class="btn" type="button" data-acc="logout">Tanca la sessió</button>`;
   }else{
     h += `<p><b>${esc(prof.nom)}</b> · ${esc(user.email)} · ${ROL_TXT()}</p>` +
-      (verified() ? "" : `<div class="amsg err">Correu sense confirmar: no pots proposar parets fins que obris l'enllaç que t'hem enviat.</div>` +
+      (verified() ? "" : `<div class="amsg err">Correu sense confirmar: no pots publicar ni confirmar aportacions fins que obris l'enllaç que t'hem enviat.</div>` +
         `<div class="row"><button class="btn" type="button" data-acc="resend">Torna a enviar el correu</button><button class="btn pri" type="button" data-acc="check">Ja l'he confirmat</button></div>`) +
       `<label>Nom<input type="text" id="accDNom" value="${esc(prof.nom)}" maxlength="80"></label><button class="btn" type="button" data-acc="name">Desa el nom</button>` +
       `<button class="btn" type="button" data-acc="logout">Tanca la sessió</button>` +
@@ -456,13 +514,13 @@ function render(){
   const del = $("accDel"); if(del) slideConfirm(del, "Llisca per esborrar el compte", deleteAccount);
 }
 function badges(){
-  const n = isRev ? pending.length : 0;
+  const n = isRev ? pending.length + (window.CEM_COM ? CEM_COM.revCount() : 0) : 0;
   $("rowRev").hidden = !isRev;
   $("revBadge").hidden = !n; $("revBadge").textContent = n;
   const warn = !!(user && (!prof || !verified()));
   $("accBadge").hidden = !warn;
-  $("peekAcc").textContent = !user ? "Sense compte: entra per proposar parets" : !prof ? "Falta crear el perfil" : `${prof.nom} · ${ROL_TXT()}${verified() ? "" : " · correu sense confirmar"}`;
-  $("peekRev").textContent = n ? n + " proposta" + (n > 1 ? "s" : "") + " per revisar" : "Cap proposta pendent";
+  $("peekAcc").textContent = !user ? "Sense compte: entra per aportar" : !prof ? "Falta crear el perfil" : `${prof.nom} · ${ROL_TXT()}${verified() ? "" : " · correu sense confirmar"}`;
+  $("peekRev").textContent = n ? n + " per revisar" : "Res per revisar";
   let dot = $("menuBtn").querySelector(".dot-badge");
   if(n || warn){ if(!dot){ dot = document.createElement("span"); dot.className = "dot-badge"; $("menuBtn").appendChild(dot); } } else if(dot) dot.remove();
 }
@@ -481,7 +539,7 @@ document.addEventListener("click", e => {
     else if(r.dataset.rv === "show") showOnMap(id); }
   const p = e.target.closest && e.target.closest("[data-page]");
   if(p && p.dataset.page === "pCompte"){ render(); if(!loading) load().catch(() => { say("Sense connexió: ara no es pot entrar.", true); }); }
-  if(p && p.dataset.page === "pRevisio"){ renderRev(); refreshPending(); }
+  if(p && p.dataset.page === "pRevisio"){ renderRev(); refreshPending(); if(window.CEM_COM) CEM_COM.revLoad(); }
 });
 $("licSend").addEventListener("click", sendProposal);
 
@@ -494,12 +552,12 @@ async function need(why){
   if(!verified() || !prof){ document.querySelectorAll(".panel").forEach(x => x.hidden = true); openPanel("pCompte");
     setTimeout(() => say(!prof ? "Falta crear el perfil." : "Abans, confirma el correu: obre l'enllaç que t'hem enviat i prem «Ja l'he confirmat».", true), 50); return null; }
   const f = await fs();
-  return {f, db, uid: user.uid, isRev, odbl: !!prof.odblAt,
+  return {f, db, uid: user.uid, isRev, odbl: !!prof.odblAt, bump: b => bump(f, b), est0, done: bumped,
     markOdbl: async () => { if(prof.odblAt) return; await f.updateDoc(f.doc(db, "usuaris", user.uid), {odblAt: f.serverTimestamp()}).catch(() => {}); prof.odblAt = true; }};
 }
 // Accés a Firestore sense obrir cap panell (valoracions de confort): null si no hi ha compte confirmat
 async function quiet(){ if(!user || !prof || !verified()) return null; const f = await fs(); return {f, db, uid: user.uid, isRev}; }
-window.CEM_CLOUD = {propose, proposeOri, need, quiet, uid: () => user ? user.uid : null, isRev: () => isRev, errText, T,
+window.CEM_CLOUD = {propose, proposeOri, need, quiet, uid: () => user ? user.uid : null, isRev: () => isRev, isAdm: () => isAdm, errText, T, decodeV, comOf, HIDDEN, badges, renderRev,
   refresh: () => { fetchPublic(true); if(user) refreshMine(); }};
 
 /* ---------- inici ---------- */

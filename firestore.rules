@@ -4,8 +4,9 @@ rules_version = '2';
 // - admins/{uid}: administració addicional (la inicial és el correu de l'Oriol, confirmat).
 // - propostes/{id}: parets proposades. Les crea qui té el correu confirmat i accepta la llicència ODbL.
 //   Les revisa (aprova o rebutja) l'administració, un revisor o un premium.
-// - parets/{id}: catàleg aprovat. Lectura pública (l'app la llegeix sense compte).
-// - orientacions/{sector_cara}: orientacions de sectors d'OSM aprovades. Lectura pública.
+// - parets/{id}: parets publicades (provisionals i confirmades). Lectura pública (l'app la llegeix sense compte).
+// - sectors/{id}, roques/{zona}: sectors nous i tipus de roca aportats per la comunitat. Lectura pública.
+// - orientacions/{sector_cara}: orientacions de sectors (comunitat). Lectura pública.
 // - valoracions/{id}: valoracions de confort compartides (paret o sector, dia, franja, vot). Les llegeix qui les ha fet i la revisió.
 // - ombres/{clau}: nivell d'ombra al peu de la paret aprovat a partir de les valoracions. Lectura pública.
 service cloud.firestore {
@@ -19,6 +20,52 @@ service cloud.firestore {
     function reviewer(){ return isAdmin() || (hasProf() && (prof().rol == "revisor" || prof().get("premium", false) == true)); }
     function str(v, n){ return v is string && v.size() > 0 && v.size() <= n; }
 
+    // ---------- Aportacions de la comunitat (parets, sectors nous, orientacions, roca) ----------
+    // Es publiquen a l'instant com a «provisional»; 2 confirmacions d'altres persones = «confirmada»;
+    // 2 rebutjos = «revisio» (l'app l'amaga i va a la safata de revisió). Persones marcades amb «revisar» → «pendent».
+    // Comptes de menys de 7 dies: màxim 5 aportacions al dia (comptador dia/n del perfil, al mateix batch).
+    function today(){ return math.floor(request.time.toMillis() / 86400000); }
+    function uref(){ return /databases/$(database)/documents/usuaris/$(request.auth.uid); }
+    function nextN(a){ return a.get("dia", 0) == today() ? a.get("n", 0) + 1 : 1; }
+    function counted(){
+      let a = get(uref()).data;
+      let b = getAfter(uref()).data;
+      return b.get("dia", -1) == today() && b.get("n", -1) == nextN(a)
+        && (nextN(a) <= 5 || request.time > a.get("creat", request.time) + duration.value(7, "d"));
+    }
+    function est0(){ return reviewer() ? "confirmada" : (prof().get("revisar", false) == true ? "pendent" : "provisional"); }
+    // nova aportació (o edició que torna a començar): sense vots, de qui l'envia, llicència ODbL
+    function fresh(d){
+      return verified() && hasProf() && (reviewer() || counted())
+        && d.estat == est0() && d.conf == {} && d.reb == {}
+        && d.per == request.auth.uid && d.llicencia == "ODbL-1.0";
+    }
+    function affC(){ return request.resource.data.diff(resource.data).affectedKeys(); }
+    function addMe(m){
+      let df = request.resource.data[m].diff(resource.data[m]);
+      return df.addedKeys().hasOnly([request.auth.uid]) && df.addedKeys().size() == 1
+        && df.removedKeys().size() == 0 && df.changedKeys().size() == 0;
+    }
+    // ✓ / ✗ d'una altra persona registrada (no qui l'ha enviada, un sol cop)
+    function vote(){
+      let a = resource.data;
+      let d = request.resource.data;
+      return verified() && hasProf() && a.get("estat", "") == "provisional"
+        && request.auth.uid != a.per && !(request.auth.uid in a.conf) && !(request.auth.uid in a.reb)
+        && affC().hasOnly(["conf", "reb", "estat"])
+        && ((!affC().hasAny(["reb"]) && addMe("conf") && d.estat == (d.conf.size() >= 2 ? "confirmada" : "provisional"))
+         || (!affC().hasAny(["conf"]) && addMe("reb") && d.estat == (d.reb.size() >= 2 ? "revisio" : "provisional")));
+    }
+    // es pot editar el que és visible (provisional o confirmat), no el que és en revisió o pendent
+    function editable(){ return resource.data.get("estat", "confirmada") in ["provisional", "confirmada"]; }
+    // «prev» = últim valor confirmat (per poder-lo restaurar si la comunitat rebutja el nou)
+    function prevOk(field){
+      let a = resource.data;
+      return request.resource.data.prev == (a.get("estat", "confirmada") == "confirmada" ? a[field] : a.get("prev", null));
+    }
+    function okNum(v, lo, hi){ return (v is number) && v >= lo && v < hi; }
+    function ownDraft(){ return signed() && resource.data.get("per", "") == request.auth.uid && resource.data.get("estat", "") in ["provisional", "pendent"]; }
+
     match /usuaris/{uid} {
       allow read: if signed() && (request.auth.uid == uid || reviewer());
       allow create: if signed() && request.auth.uid == uid
@@ -27,8 +74,11 @@ service cloud.firestore {
         && request.resource.data.email == request.auth.token.email;
       // la persona es canvia el nom i marca que ha acceptat la llicència; l'administració, el rol i el premium
       allow update: if signed() && (
-        (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nom", "odblAt"])
-          && str(request.resource.data.nom, 80))
+        (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nom", "odblAt", "dia", "n"])
+          && str(request.resource.data.nom, 80)
+          // el comptador d'aportacions només pot pujar d'un en un (no es pot posar a zero)
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["dia", "n"])
+            || (request.resource.data.dia == today() && request.resource.data.n == nextN(resource.data))))
         || (isAdmin() && request.auth.uid != uid));
       allow delete: if signed() && (request.auth.uid == uid || isAdmin());
     }
@@ -102,14 +152,48 @@ service cloud.firestore {
       allow delete: if reviewer() || (signed() && resource.data.creatPer == request.auth.uid && resource.data.estat == "pendent");
     }
 
-    // Orientacions de sectors d'OSM revisades: {sector}_{cara}. Lectura pública; mana sobre OSM i el relleu.
+    // Orientació d'una cara de sector (d'OSM o de la comunitat): {sector}_{cara}. Lectura pública; mana sobre OSM i el relleu.
     match /orientacions/{id} {
+      function okO(d){
+        return d.keys().hasOnly(["sector", "cara", "zone", "az", "prev", "estat", "conf", "reb", "per", "llicencia", "act", "v", "aprovat"])
+          && str(d.sector, 40) && d.cara is int && d.cara >= 0 && d.cara < 8 && id == d.sector + "_" + string(d.cara)
+          && str(d.zone, 60) && okNum(d.az, 0, 360) && (d.get("prev", null) == null || okNum(d.get("prev", 0), 0, 360));
+      }
       allow read: if true;
-      allow create, update: if reviewer()
-        && request.resource.data.keys().hasOnly(["sector", "cara", "zone", "az", "llicencia", "v", "aprovat"])
-        && request.resource.data.llicencia == "ODbL-1.0"
-        && request.resource.data.az is number && request.resource.data.az >= 0 && request.resource.data.az < 360;
-      allow delete: if isAdmin();
+      allow create: if okO(request.resource.data) && fresh(request.resource.data) && request.resource.data.prev == null;
+      allow update: if (okO(request.resource.data) && editable() && fresh(request.resource.data) && prevOk("az"))
+        || vote()
+        || (reviewer() && okO(request.resource.data));
+      allow delete: if reviewer();
+    }
+
+    // Sectors nous que no són a OpenStreetMap (punt al mapa, nom i cap on mira). Lectura pública.
+    match /sectors/{id} {
+      function okS(d){
+        return d.keys().hasOnly(["zone", "name", "lat", "lon", "kind", "az", "estat", "conf", "reb", "per", "llicencia", "act"])
+          && str(d.zone, 60) && d.name is string && d.name.size() <= 80
+          && okNum(d.lat, -90, 90) && okNum(d.lon, -180, 180) && d.kind in ["sector", "bloc"]
+          && (d.get("az", null) == null || okNum(d.get("az", 0), 0, 360));
+      }
+      allow read: if true;
+      allow create: if okS(request.resource.data) && fresh(request.resource.data);
+      allow update: if vote() || (reviewer() && okS(request.resource.data));
+      allow delete: if reviewer() || ownDraft();
+    }
+
+    // Tipus de roca d'una zona (canvia el temps de secat): {zona}. Lectura pública.
+    match /roques/{id} {
+      function okK(d){
+        return d.keys().hasOnly(["zone", "rock", "prev", "estat", "conf", "reb", "per", "llicencia", "act"])
+          && d.zone == id && d.rock in ["calcaria", "granit", "conglomerat", "gres"]
+          && (d.get("prev", null) == null || d.get("prev", "") in ["calcaria", "granit", "conglomerat", "gres"]);
+      }
+      allow read: if true;
+      allow create: if okK(request.resource.data) && fresh(request.resource.data) && request.resource.data.prev == null;
+      allow update: if (okK(request.resource.data) && editable() && fresh(request.resource.data) && prevOk("rock"))
+        || vote()
+        || (reviewer() && okK(request.resource.data));
+      allow delete: if reviewer();
     }
 
     // Valoracions de confort: les crea qui té el correu confirmat; només per ajustar l'ombra de les parets
@@ -137,12 +221,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Parets traçades: es publiquen a l'instant (provisional) i les valida la comunitat. Lectura pública.
+    // Les antigues (aprovades per la revisió, sense «estat») compten com a confirmades.
     match /parets/{id} {
+      function okP(d){
+        return d.keys().hasOnly(["zone", "name", "exp", "d", "llicencia", "v", "aprovat", "estat", "conf", "reb", "per", "act"])
+          && str(d.zone, 60) && str(d.name, 80) && d.exp in ["exposat", "arrecerat"] && str(d.d, 200000)
+          && d.llicencia == "ODbL-1.0";
+      }
       allow read: if true;
-      allow create, update: if reviewer()
-        && request.resource.data.keys().hasOnly(["zone", "name", "exp", "d", "llicencia", "v", "aprovat"])
-        && request.resource.data.llicencia == "ODbL-1.0";
-      allow delete: if isAdmin();
+      allow create: if okP(request.resource.data) && (reviewer() || fresh(request.resource.data));
+      allow update: if vote() || (reviewer() && okP(request.resource.data));
+      allow delete: if reviewer() || ownDraft();
     }
   }
 }
