@@ -15,10 +15,19 @@
   let kind = store.get("cem_wx", "temp");          // temp | rain | wind
   let rainMode = store.get("cem_wx_rain", "radar"); // radar | fc
   let windMode = store.get("cem_wx_wind", "wind");  // wind | gust
+  let histLen = 0;                                  // llargada de l'historial en obrir la vista (amb el pas propi)
   let at = null;                                    // {lat, lon, z} = on mirava el mapa en obrir
   let rvMap = null, rvFrames = [], rvIdx = 0, rvTimer = null, rvAt = 0, rvMk = null;
 
   const open = () => !$("wxView").hidden;
+  // Cada mapa va en un iframe NOU (canviar l'adreça d'un iframe existent afegeix un pas a l'historial).
+  function frameNew(u){
+    const old = $("wxFrame"), f = document.createElement("iframe");
+    ["id", "title", "sandbox", "referrerpolicy"].forEach(a => old.hasAttribute(a) && f.setAttribute(a, old.getAttribute(a)));
+    f.hidden = old.hidden;
+    if(u){ f.src = u; f.dataset.u = u; }
+    old.replaceWith(f);
+  }
 
   function windyUrl(ov){
     const z = clamp(Math.round(at.z), 4, 11);
@@ -39,13 +48,13 @@
     $("wxWindSeg").hidden = kind !== "wind";
     const radar = kind === "rain" && rainMode === "radar";
     $("wxRadarBox").hidden = !radar;
-    $("wxFrame").hidden = radar;
-    if(radar){ $("wxFrame").removeAttribute("src"); rvOpen(); }
+    if(radar){ if($("wxFrame").dataset.u) frameNew(null); $("wxFrame").hidden = true; rvOpen(); }
     else{
       rvPlay(false);
       const ov = kind === "temp" ? "temp" : kind === "wind" ? windMode : "rain";
       const u = windyUrl(ov);
-      if($("wxFrame").getAttribute("src") !== u) $("wxFrame").src = u;
+      if($("wxFrame").dataset.u !== u) frameNew(u);
+      $("wxFrame").hidden = false;
     }
     sub();
   }
@@ -125,15 +134,22 @@
     closeFloating();
     $("wxView").hidden = false;
     if(!(history.state && history.state.cemWx)) history.pushState({cemWx:1}, "");
+    histLen = history.length;
     show();
   }
   function wxShut(){
     $("wxView").hidden = true;
-    $("wxFrame").removeAttribute("src");          // atura Windy (dades) quan no es mira
+    frameNew(null);                               // atura Windy (dades) i treu els seus passos de l'historial
     rvPlay(false);
   }
   $("wxBtn").addEventListener("click", wxOpen);
-  $("wxClose").addEventListener("click", () => { if(history.state && history.state.cemWx) history.back(); else wxShut(); });
+  // Un sol toc: Windy afegeix passos a l'historial (canvis de mapa, línia de temps) i Chrome no els treu encara
+  // que es tregui l'iframe. Per això se salta de cop fins a abans d'obrir la vista: tots els passos afegits + el propi.
+  $("wxClose").addEventListener("click", () => {
+    if(!(history.state && history.state.cemWx)){ wxShut(); return; }
+    const n = Math.max(0, history.length - histLen);
+    history.go(-(n + 1));
+  });
   addEventListener("popstate", () => { if(open()) wxShut(); });
   window.CEM_WX = {close: () => $("wxClose").click(), isOpen: open};
 
