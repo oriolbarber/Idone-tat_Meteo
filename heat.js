@@ -23,7 +23,7 @@ window.CEM_H = (function(){
   const PRE_TTL = 30 * 60e3;         // es torna a mirar si hi ha fitxer nou cada mitja hora
   const PRE_OLD = 12 * 3600e3;       // amb connexió, un fitxer de més de 12 h no es fa servir (Actions aturat?)
   let pre = null, preTried = 0;      // {at, days, idx: Map("i,j" → posició), vals, dec: Map}
-  let thr = store.get("cem_heat_thr", 0);
+  try{ localStorage.removeItem("cem_heat_thr"); }catch(e){}   // llindar «Amaga les notes per sota de» tret (02-11-2026)
   let busy = false, again = false, timer = null, lastErr = false;
 
   const kOf = (i, j) => i + "," + j;
@@ -157,7 +157,7 @@ window.CEM_H = (function(){
     const zs = zonesNear(), need = needed(zs);
     if(!need.size || need.size > MAXC){ hide(); if(need.size > MAXC) note("Acosta't una mica per veure la capa de colors."); return; }
     const col = ramp();
-    raster("heat", zs, need, k => score(k, cells.get(k)), sc => { if(sc < thr) return null; const c = col(sc); return [c[0], c[1], c[2], 1]; }, OPAC);
+    raster("heat", zs, need, k => score(k, cells.get(k)), sc => { const c = col(sc); return [c[0], c[1], c[2], 1]; }, OPAC);
     $("heatLeg").hidden = false;
   }
   function drawRain(){
@@ -237,10 +237,7 @@ window.CEM_H = (function(){
   }
   function renderUI(){
     const c = $("lyHeat"); if(c) c.checked = !!ly.heat;
-    const r = $("heatThrRow"); if(r) r.hidden = !ly.heat;
-    const i = $("heatThr"); if(i){ i.value = thr; $("heatThrV").textContent = thr ? thr : "0 (es veu tot)"; }
   }
-  document.addEventListener("input", e => { if(e.target.id !== "heatThr") return; thr = +e.target.value; store.set("cem_heat_thr", thr); renderUI(); draw(); });
   if(map.loaded()) update(); else map.once("load", update);
   return {update, redraw: draw, _dbg: {score, kOf, cells, pre: () => pre}};   // _dbg: per a proves
 })();
