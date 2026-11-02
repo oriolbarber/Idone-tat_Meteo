@@ -22,7 +22,7 @@
   }catch(e){}
 </script>
 <link rel="stylesheet" href="vendor/maplibre-gl.css?v=5.24.0">
-<link rel="stylesheet" href="app.css?v=15">
+<link rel="stylesheet" href="app.css?v=16">
 </head>
 <body>
 
@@ -41,6 +41,9 @@
 <div class="tools" role="toolbar" aria-label="Eines del mapa">
   <button class="ib" id="layerBtn" type="button" aria-label="Capes" aria-expanded="false" aria-controls="layerPanel">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+  </button>
+  <button class="ib" id="wxBtn" type="button" aria-label="Mapes meteo: temperatura, pluja i vent">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15.5h9.5a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 7.3 9.6 3 3 0 0 0 7 15.5z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/></svg>
   </button>
   <button class="ib" id="terrainBtn" type="button" aria-label="Relleu 3D" aria-pressed="false"><b class="t3d">3D</b></button>
   <button class="ib" id="locBtn" type="button" aria-label="On soc">
@@ -153,6 +156,36 @@
   </div>
   <div class="zdays" id="zDays" role="group" aria-label="Dia de la fitxa"></div>
   <div class="sh-body" id="zBody"></div>
+</section>
+
+<!-- ============ MAPES METEO (pantalla completa, wx.js) ============ -->
+<section class="sheet wx" id="wxView" hidden aria-labelledby="wxTitle">
+  <div class="zh">
+    <button class="ib flat" type="button" id="wxClose" aria-label="Torna al mapa">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="zt"><h2 id="wxTitle">Mapes meteo</h2><div class="zmeta">Centrat on miraves el mapa</div></div>
+    <button class="inf" type="button" data-info="wx" aria-label="Com es fan servir aquests mapes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+  <div class="wx-bar">
+    <div class="seg wx-seg" role="group" aria-label="Mapa" id="wxSeg">
+      <button type="button" data-wx="temp">Temperatura</button><button type="button" data-wx="rain">Pluja</button><button type="button" data-wx="wind">Vent</button></div>
+    <div class="seg" role="group" aria-label="Tipus de pluja" id="wxRainSeg" hidden>
+      <button type="button" data-rm="radar">Radar · ara</button><button type="button" data-rm="fc">Previsió</button></div>
+    <div class="seg" role="group" aria-label="Vent o ratxes" id="wxWindSeg" hidden>
+      <button type="button" data-wm="wind">Vent</button><button type="button" data-wm="gust">Ratxes</button></div>
+  </div>
+  <div class="wx-body">
+    <iframe id="wxFrame" title="Mapa meteo animat de Windy" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div class="wx-radar" id="wxRadarBox" hidden>
+      <div id="wxRadar"></div>
+      <div class="card wx-player">
+        <button class="ib" type="button" id="wxPlay" aria-label="Reprodueix l'animació"></button>
+        <input type="range" id="wxSlider" min="0" max="0" value="0" aria-label="Moment de la imatge">
+        <span class="wx-time" id="wxTime">–</span>
+      </div>
+    </div>
+  </div>
+  <div class="wx-foot" id="wxSrc"></div>
 </section>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -298,11 +331,12 @@
 <script src="vendor/maplibre-gl.js?v=5.24.0"></script>
 <script src="zones.js?v=1"></script>
 <script src="zones-osm.js?v=1"></script>
-<script src="app.js?v=24"></script>
+<script src="app.js?v=25"></script>
 <script src="cloud.js?v=5"></script>
 <script src="conf.js?v=2"></script>
 <script src="restr.js?v=1"></script>
 <script src="com.js?v=1"></script>
 <script src="heat.js?v=4"></script>
+<script src="wx.js?v=1"></script>
 </body>
 </html>

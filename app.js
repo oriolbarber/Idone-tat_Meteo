@@ -1097,6 +1097,13 @@ function infoContent(k){
       <li><span class="sunleg"><span><i class="c"></i></span></span> <b>Ombra freda:</b> sensació per sota de ${crit.comfLo} °C sense sol.</li></ul>
       <p>El sol a la paret es calcula amb cap on mira i l'horitzó real del relleu de 5 m de l'ICGC (muntanyes del davant que el tapen). La nota de la zona és la del millor sector.</p>
       <p><b>Orientació:</b> la d'OpenStreetMap (etiqueta climbing:orientation) si hi és; si no, <b>estimada amb el relleu</b> (cap on baixa el terreny al voltant del punt). El relleu suavitza les parets verticals i el punt d'OSM pot estar una mica desplaçat: si no és bona, corregeix-la a «Corregeix l'orientació». La correcció val només per a aquest mòbil fins que prems <b>«Proposa-la a tothom»</b>: quan una persona revisora l'aprova, la veu tothom (i és la que mana sobre la d'OSM o la del relleu).</p>`],
+    wx: ["Mapes meteo", `
+      <p>Mapes de tot Europa centrats on miraves el mapa en obrir-los. Pots moure'ls i fer-hi zoom.</p>
+      <ul><li><b>Temperatura</b> i <b>Vent</b> (o ratxes): previsió del model europeu ECMWF a Windy. Mou la línia de temps de sota per veure les properes hores i dies; toca un punt per veure'n els valors.</li>
+      <li><b>Pluja · Radar:</b> la pluja que detecten ara els radars, l'última hora cada 10 minuts (RainViewer). Fins a escala regional: de prop es veu borrós.</li>
+      <li><b>Pluja · Previsió:</b> la pluja prevista per ECMWF a Windy, amb la mateixa línia de temps.</li></ul>
+      <p>Són mapes de consulta: no canvien la nota de les zones, que es calcula amb la previsió d'Open-Meteo de cada zona. Windy i el model de la nota poden no coincidir del tot.</p>
+      <p>Els mapes no es descarreguen per fer-los servir sense connexió.</p>`],
     prova: ["Dades de prova", `
       <p>Aquesta zona és del catàleg provisional: coordenades i altitud aproximades (centre de la zona) i encara sense parets revisades.</p>
       <p>El veredicte és per a tota la zona. Traça una paret per tenir-ne el sol i l'ombra reals.</p>`]
@@ -1328,6 +1335,7 @@ addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
   if(anyPanel()) document.querySelectorAll(".panel").forEach(x => x.hidden = true);
   else if(["calSheet", "rankSheet", "infoSheet", "voteSheet"].some(x => $(x) && !$(x).hidden) || !$("layerPanel").hidden) closeFloating();
+  else if(window.CEM_WX && CEM_WX.isOpen()) CEM_WX.close();
   else if(!$("sheet").hidden) $("sheetClose").click();
 });
 $("lyFav").addEventListener("change", e => setOnlyFav(e.target.checked));

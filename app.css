@@ -433,3 +433,17 @@ body.drawing .fab{display:none}
 .acc .fl{display:block;font-weight:700;margin-bottom:4px}
 .crow .vrow,.seclist .vrow{flex-basis:100%}
 .vrow .btn.sm{min-height:44px}
+
+/* mapes meteo (wx.js): pantalla completa com la fitxa de zona */
+.wx .zh .inf{width:44px;height:44px}
+.wx-bar{display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.wx-seg{flex:1 1 100%;flex-wrap:nowrap}
+.wx-seg button{flex:1;min-height:46px;font-size:1em}
+.wx-body{position:relative;flex:1;min-height:0;background:var(--surface-2)}
+.wx-body iframe,.wx-radar,#wxRadar{position:absolute;inset:0;width:100%;height:100%;border:0}
+.wx-player{position:absolute;left:10px;right:10px;bottom:10px;display:flex;align-items:center;gap:10px;padding:8px 12px;max-width:520px;margin:0 auto}
+.wx-player .ib{box-shadow:none}
+.wx-player input{flex:1;min-width:0;height:34px;accent-color:var(--accent)}
+.wx-time{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:7.5em;text-align:right}
+.wx-pt{width:14px;height:14px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px #0006}
+.wx-foot{flex:none;padding:6px 12px;font-size:.8em;font-weight:600;color:var(--muted);background:var(--surface);border-top:1px solid var(--line)}
